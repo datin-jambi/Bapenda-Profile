@@ -18,6 +18,7 @@ interface FindAllParams {
   userId?: number;
   search?: string;
   status?: string;
+  condition?: string;
   dateFrom?: string;
   dateTo?: string;
 }
@@ -45,7 +46,7 @@ export const vehicleTaxRepository = {
     });
   },
 
-  async findAll({ page, limit, skip, userId, search, status, dateFrom, dateTo }: FindAllParams) {
+  async findAll({ page, limit, skip, userId, search, status, condition, dateFrom, dateTo }: FindAllParams) {
     const where: Record<string, unknown> = {};
 
     if (userId) {
@@ -54,6 +55,10 @@ export const vehicleTaxRepository = {
 
     if (status) {
       where.status = status;
+    }
+
+    if (condition) {
+      where.condition = condition;
     }
 
     // dateTo inklusif: batas atas = awal hari berikutnya.

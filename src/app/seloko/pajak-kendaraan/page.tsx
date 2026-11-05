@@ -10,6 +10,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   vehicleTaxCheckSchema,
   VehicleTaxCheckInput,
 } from "@/lib/validations";
@@ -28,6 +35,7 @@ import {
   Gauge,
   Palette,
   CreditCard,
+  X,
 } from "lucide-react";
 import { DataTable, ColumnDef } from "@/components/seloko/data-table";
 import { CameraScanner } from "@/components/seloko/camera-scanner";
@@ -90,6 +98,15 @@ type CheckResult = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+/** Pilihan kondisi kendaraan yang disimpan di kolom `condition`. */
+const CONDITION_OPTIONS = [
+  "Baik",
+  "Rusak",
+  "Rusak berat",
+  "Tidak sesuai kondisi",
+  "Lainnya",
+] as const;
+
 function formatDate(str?: string | null): string {
   if (!str) return "-";
   return new Date(str).toLocaleDateString("id-ID", {
@@ -117,6 +134,24 @@ function formatRupiah(val?: string): string {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+/** Warna badge per kondisi kendaraan — tiap kondisi punya warna berbeda. */
+const CONDITION_BADGE_VARIANT: Record<string, React.ComponentProps<typeof Badge>["variant"]> = {
+  Baik: "success",
+  Rusak: "warning",
+  "Rusak berat": "danger",
+  "Tidak sesuai kondisi": "info",
+  Lainnya: "default",
+};
+
+function ConditionBadge({ value }: { value: string | null }) {
+  if (!value) return <span className="text-muted-foreground">-</span>;
+  return (
+    <Badge variant={CONDITION_BADGE_VARIANT[value] ?? "outline"} size="sm">
+      {value}
+    </Badge>
+  );
+}
+
 function CekPajakPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
@@ -124,6 +159,11 @@ function CekPajakPage() {
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebounce(searchInput, 2000);
   const isSearching = searchInput !== debouncedSearch;
+
+  // Filter riwayat — "all" berarti tanpa filter.
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [conditionFilter, setConditionFilter] = useState("all");
+  const hasFilter = statusFilter !== "all" || conditionFilter !== "all" || searchInput !== "";
 
   // Check flow state
   const [nopolInput, setNopolInput] = useState("");
@@ -163,12 +203,14 @@ function CekPajakPage() {
   // ── Data fetching (riwayat) ──────────────────────────────────────────────
 
   const { data, isLoading } = useQuery<CheckLogResponse>({
-    queryKey: ["cek-pajak", page, pageSize, debouncedSearch],
+    queryKey: ["cek-pajak", page, pageSize, debouncedSearch, statusFilter, conditionFilter],
     queryFn: () => {
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("limit", String(pageSize));
       if (debouncedSearch) params.set("search", debouncedSearch);
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (conditionFilter !== "all") params.set("condition", conditionFilter);
       return api.get(`/seloko/pajak-kendaraan?${params.toString()}`).then((r) => r.data);
     },
   });
@@ -226,6 +268,10 @@ function CekPajakPage() {
 
   function handleSave() {
     if (!checkResult) return;
+    if (!condition.trim()) {
+      toast.error("Pilih kondisi kendaraan terlebih dahulu");
+      return;
+    }
 
     saveMutation.mutate({
       licensePlate: checkResult.licensePlate,
@@ -241,6 +287,8 @@ function CekPajakPage() {
   function handleReset() {
     setCheckResult(null);
     setNopolInput("");
+    // Kondisi milik kendaraan yang barusan dicek — jangan terbawa ke kendaraan berikutnya.
+    setCondition("");
   }
 
   // ── Columns ───────────────────────────────────────────────────────────────
@@ -269,7 +317,7 @@ function CekPajakPage() {
     {
       key: "condition",
       header: "Kondisi",
-      render: (log) => log.condition ?? "-",
+      render: (log) => <ConditionBadge value={log.condition} />,
     },
     {
       key: "lokasi",
@@ -317,9 +365,8 @@ function CekPajakPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Lokasi, kondisi & catatan diisi lebih dulu, sengaja tidak ikut
-                  ter-reset saat cek/simpan agar bisa dipakai lintas kendaraan
-                  (kondisi tetap direset tiap simpan karena melekat ke kendaraan). */}
+              {/* Lokasi & catatan diisi lebih dulu, sengaja tidak ikut ter-reset
+                  saat cek/simpan agar bisa dipakai ulang lintas kendaraan. */}
               <div className="space-y-2">
                 <Label>Lokasi</Label>
                 <Input
@@ -336,16 +383,6 @@ function CekPajakPage() {
                   rows={3}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Kondisi</Label>
-                <Input
-                  placeholder="contoh: Baik, body lecet"
-                  maxLength={100}
-                  value={condition}
-                  onChange={(e) => setCondition(e.target.value)}
                 />
               </div>
 
@@ -421,12 +458,40 @@ function CekPajakPage() {
                 </div>
               )}
 
+              {/* Kondisi kendaraan — hanya muncul setelah data kendaraan ditemukan,
+                  karena baru bisa dinilai setelah petugas melihat hasil pengecekan.
+                  Wajib dipilih sebelum log boleh disimpan. */}
+              {checkResult && (
+                <div className="space-y-2">
+                  <Label>
+                    Kondisi <span className="text-red-500">*</span>
+                  </Label>
+                  <Select value={condition} onValueChange={setCondition}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Pilih kondisi kendaraan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CONDITION_OPTIONS.map((opt) => (
+                        <SelectItem key={opt} value={opt}>
+                          {opt}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {!condition && (
+                    <p className="text-xs text-muted-foreground">
+                      Wajib dipilih sebelum menyimpan log.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Save Button */}
               <Button
                 type="button"
                 className="w-full"
                 onClick={handleSave}
-                disabled={!checkResult || saveMutation.isPending}
+                disabled={!checkResult || !condition || saveMutation.isPending}
               >
                 {saveMutation.isPending ? (
                   <>
@@ -442,7 +507,8 @@ function CekPajakPage() {
               </Button>
               {!checkResult && (
                 <p className="text-xs text-muted-foreground">
-                  Cek nomor polisi dulu, lokasi, kondisi & catatan di atas akan ikut tersimpan.
+                  Cek nomor polisi dulu — lokasi & catatan di atas akan ikut tersimpan,
+                  kondisi kendaraan dipilih setelah datanya ditemukan.
                 </p>
               )}
             </CardContent>
@@ -574,18 +640,74 @@ function CekPajakPage() {
               <CardTitle className="text-base">Riwayat Pengecekan</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Cari nomor polisi..."
-                  value={searchInput}
-                  onChange={(e) => {
-                    setSearchInput(e.target.value);
+              {/* Pencarian & filter */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Cari nomor polisi..."
+                    value={searchInput}
+                    onChange={(e) => {
+                      setSearchInput(e.target.value);
+                      setPage(1);
+                    }}
+                    className="pl-9"
+                  />
+                </div>
+
+                <Select
+                  value={statusFilter}
+                  onValueChange={(v) => {
+                    setStatusFilter(v);
                     setPage(1);
                   }}
-                  className="pl-9"
-                />
+                >
+                  <SelectTrigger className="w-full sm:w-[150px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua status</SelectItem>
+                    <SelectItem value="Lunas">Lunas</SelectItem>
+                    <SelectItem value="Belum Lunas">Belum Lunas</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={conditionFilter}
+                  onValueChange={(v) => {
+                    setConditionFilter(v);
+                    setPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Kondisi" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua kondisi</SelectItem>
+                    {CONDITION_OPTIONS.map((opt) => (
+                      <SelectItem key={opt} value={opt}>
+                        {opt}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {hasFilter && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="text-muted-foreground"
+                    onClick={() => {
+                      setStatusFilter("all");
+                      setConditionFilter("all");
+                      setSearchInput("");
+                      setPage(1);
+                    }}
+                  >
+                    <X className="mr-1 h-4 w-4" />
+                    Reset
+                  </Button>
+                )}
               </div>
 
               {/* Table */}
@@ -613,7 +735,9 @@ function CekPajakPage() {
                       {log.lokasi ?? "-"}
                     </p>
                     {log.condition && (
-                      <p className="text-xs text-muted-foreground">Kondisi: {log.condition}</p>
+                      <div className="pt-0.5">
+                        <ConditionBadge value={log.condition} />
+                      </div>
                     )}
                     {log.notes && (
                       <p className="text-xs text-muted-foreground line-clamp-2">{log.notes}</p>

@@ -84,6 +84,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const { page, limit, skip } = getPaginationParams(searchParams);
   const search = searchParams.get("search") || undefined;
   const status = searchParams.get("status") || undefined;
+  const condition = searchParams.get("condition") || undefined;
   const dateFrom = searchParams.get("dateFrom") || undefined;
   const dateTo = searchParams.get("dateTo") || undefined;
   const petugasId = Number(searchParams.get("userId")) || undefined;
@@ -95,6 +96,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     userId: canViewAll ? petugasId : user.id,
     search,
     status,
+    condition,
     dateFrom,
     dateTo,
   });
