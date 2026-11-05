@@ -127,6 +127,8 @@ export const settingsSchema = z.record(z.string(), z.string());
 export const vehicleTaxCheckSchema = z.object({
   licensePlate: z.string().min(1, "Nomor polisi wajib diisi"),
   status: z.enum(["Lunas", "Belum Lunas"], { required_error: "Status wajib dipilih" }),
+  // Kondisi kendaraan diisi manual oleh petugas; boleh dikosongkan.
+  condition: z.string().max(100, "Kondisi maksimal 100 karakter").optional().nullable(),
   notes: z.string().optional().nullable(),
   latitude: z.coerce.number().optional().nullable(),
   longitude: z.coerce.number().optional().nullable(),

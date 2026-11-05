@@ -215,6 +215,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     userId: user.id,
     licensePlate: parsed.data.licensePlate.toUpperCase(),
     status: parsed.data.status,
+    condition: parsed.data.condition?.trim() || null,
     notes: parsed.data.notes,
     latitude: parsed.data.latitude,
     longitude: parsed.data.longitude,

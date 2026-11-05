@@ -4,6 +4,7 @@ interface CreateLogParams {
   userId: number;
   licensePlate: string;
   status: string;
+  condition?: string | null;
   notes?: string | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -28,6 +29,7 @@ export const vehicleTaxRepository = {
         userId: data.userId,
         licensePlate: data.licensePlate,
         status: data.status,
+        condition: data.condition ?? null,
         notes: data.notes ?? null,
         latitude: data.latitude ?? null,
         longitude: data.longitude ?? null,

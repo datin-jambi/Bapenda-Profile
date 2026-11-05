@@ -253,6 +253,8 @@ model VehicleTaxCheckLog {
   userId        Int
   licensePlate  String
   status        String
+  /// Kondisi kendaraan saat pengecekan, diisi manual oleh petugas.
+  condition     String?
   notes         String?
   latitude      Float?
   longitude     Float?

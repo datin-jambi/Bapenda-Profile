@@ -40,6 +40,7 @@ type CheckLog = {
   id: number;
   licensePlate: string;
   status: string;
+  condition: string | null;
   notes: string | null;
   latitude: number | null;
   longitude: number | null;
@@ -136,6 +137,7 @@ function CekPajakPage() {
 
   // Save form state
   const [lokasi, setLokasi] = useState("");
+  const [condition, setCondition] = useState("");
   const [notes, setNotes] = useState("");
 
   // ── Geolocation ───────────────────────────────────────────────────────────
@@ -198,6 +200,9 @@ function CekPajakPage() {
       toast.success("Log pengecekan berhasil disimpan");
       setCheckResult(null);
       setNopolInput("");
+      // Kondisi melekat pada kendaraan yang baru dicek, jadi ikut direset —
+      // berbeda dengan lokasi & catatan yang dipakai ulang lintas kendaraan.
+      setCondition("");
     },
     onError: (err: { response?: { data?: { message?: string } } }) =>
       toast.error(err.response?.data?.message || "Gagal menyimpan data"),
@@ -225,6 +230,7 @@ function CekPajakPage() {
     saveMutation.mutate({
       licensePlate: checkResult.licensePlate,
       status: checkResult.status,
+      condition: condition.trim() || null,
       notes: notes || null,
       latitude,
       longitude,
@@ -259,6 +265,11 @@ function CekPajakPage() {
           {log.status}
         </Badge>
       ),
+    },
+    {
+      key: "condition",
+      header: "Kondisi",
+      render: (log) => log.condition ?? "-",
     },
     {
       key: "lokasi",
@@ -306,8 +317,9 @@ function CekPajakPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Lokasi & catatan diisi lebih dulu, sengaja tidak ikut ter-reset
-                  saat cek/simpan agar bisa dipakai lintas kendaraan. */}
+              {/* Lokasi, kondisi & catatan diisi lebih dulu, sengaja tidak ikut
+                  ter-reset saat cek/simpan agar bisa dipakai lintas kendaraan
+                  (kondisi tetap direset tiap simpan karena melekat ke kendaraan). */}
               <div className="space-y-2">
                 <Label>Lokasi</Label>
                 <Input
@@ -324,6 +336,16 @@ function CekPajakPage() {
                   rows={3}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Kondisi</Label>
+                <Input
+                  placeholder="contoh: Baik, body lecet"
+                  maxLength={100}
+                  value={condition}
+                  onChange={(e) => setCondition(e.target.value)}
                 />
               </div>
 
@@ -420,7 +442,7 @@ function CekPajakPage() {
               </Button>
               {!checkResult && (
                 <p className="text-xs text-muted-foreground">
-                  Cek nomor polisi dulu, lokasi & catatan di atas akan ikut tersimpan.
+                  Cek nomor polisi dulu, lokasi, kondisi & catatan di atas akan ikut tersimpan.
                 </p>
               )}
             </CardContent>
@@ -590,6 +612,9 @@ function CekPajakPage() {
                       <MapPin className="h-3 w-3 flex-shrink-0" />
                       {log.lokasi ?? "-"}
                     </p>
+                    {log.condition && (
+                      <p className="text-xs text-muted-foreground">Kondisi: {log.condition}</p>
+                    )}
                     {log.notes && (
                       <p className="text-xs text-muted-foreground line-clamp-2">{log.notes}</p>
                     )}

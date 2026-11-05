@@ -88,5 +88,20 @@
     "deletedAt": null,
     "id": 6,
     "uptdId": null
+  },
+  {
+    "role": "Petugas",
+    "name": "Petugas",
+    "email": "petugas@gmail.com",
+    "passwordHash": "$2a$12$s8KN1FI0FuaHKRgU3Ky6ee41tPduY5GmVemIJYI.yGzp/oM.MQExK",
+    "phone": "",
+    "avatarUrl": null,
+    "gender": null,
+    "isActive": true,
+    "createdAt": "2026-07-15 04:28:21.592",
+    "updatedAt": "2026-07-15 04:28:21.592",
+    "deletedAt": null,
+    "id": 7,
+    "uptdId": null
   }
 ]
