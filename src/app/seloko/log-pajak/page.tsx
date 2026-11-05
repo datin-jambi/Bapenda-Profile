@@ -20,6 +20,7 @@ type CheckLog = {
   id: number;
   licensePlate: string;
   status: string;
+  condition: string | null;
   notes: string | null;
   latitude: number | null;
   longitude: number | null;
@@ -34,6 +35,32 @@ type Paginated<T> = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Pilihan kondisi kendaraan yang disimpan di kolom `condition`. */
+const CONDITION_OPTIONS = [
+  "Baik",
+  "Rusak",
+  "Rusak berat",
+  "Tidak sesuai kondisi",
+  "Lainnya",
+] as const;
+
+const CONDITION_BADGE_VARIANT: Record<string, React.ComponentProps<typeof Badge>["variant"]> = {
+  Baik: "success",
+  Rusak: "warning",
+  "Rusak berat": "danger",
+  "Tidak sesuai kondisi": "info",
+  Lainnya: "default",
+};
+
+function ConditionBadge({ value }: { value: string | null }) {
+  if (!value) return <span className="text-muted-foreground">-</span>;
+  return (
+    <Badge variant={CONDITION_BADGE_VARIANT[value] ?? "outline"} size="sm">
+      {value}
+    </Badge>
+  );
+}
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleDateString("id-ID", {
@@ -52,16 +79,18 @@ function LogPajakPage() {
   const [pageSize, setPageSize] = useState(10);
   const [searchInput, setSearchInput] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [conditionFilter, setConditionFilter] = useState("all");
   const [tanggal, setTanggal] = useState("");
   const debouncedSearch = useDebounce(searchInput, 500);
   const isSearching = searchInput !== debouncedSearch;
 
   const { data, isLoading } = useQuery<Paginated<CheckLog>>({
-    queryKey: ["log-pajak", page, pageSize, debouncedSearch, statusFilter, tanggal],
+    queryKey: ["log-pajak", page, pageSize, debouncedSearch, statusFilter, conditionFilter, tanggal],
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page), limit: String(pageSize) });
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (statusFilter !== "all") params.set("status", statusFilter);
+      if (conditionFilter !== "all") params.set("condition", conditionFilter);
       // Satu tanggal = rentang satu hari penuh di sisi server.
       if (tanggal) {
         params.set("dateFrom", tanggal);
@@ -74,11 +103,12 @@ function LogPajakPage() {
   const meta = data?.meta;
 
   const hasActiveFilter =
-    searchInput !== "" || statusFilter !== "all" || tanggal !== "";
+    searchInput !== "" || statusFilter !== "all" || conditionFilter !== "all" || tanggal !== "";
 
   function resetFilter() {
     setSearchInput("");
     setStatusFilter("all");
+    setConditionFilter("all");
     setTanggal("");
     setPage(1);
   }
@@ -103,6 +133,11 @@ function LogPajakPage() {
           {log.status}
         </Badge>
       ),
+    },
+    {
+      key: "condition",
+      header: "Kondisi",
+      render: (log) => <ConditionBadge value={log.condition} />,
     },
     {
       key: "user",
@@ -176,6 +211,16 @@ function LogPajakPage() {
               { label: "Belum Lunas", value: "Belum Lunas" },
             ],
           },
+          {
+            value: conditionFilter,
+            onChange: (v) => {
+              setConditionFilter(v);
+              setPage(1);
+            },
+            placeholder: "Kondisi",
+            allLabel: "Semua Kondisi",
+            options: CONDITION_OPTIONS.map((c) => ({ label: c, value: c })),
+          },
         ]}
       >
         <DatePicker
@@ -213,14 +258,17 @@ function LogPajakPage() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono font-bold">{log.licensePlate.toUpperCase()}</span>
-                  <Badge variant={log.status === "Lunas" ? "success" : "destructive"}>
-                    {log.status === "Lunas" ? (
-                      <CheckCircle2 className="mr-1 h-3 w-3" />
-                    ) : (
-                      <XCircle className="mr-1 h-3 w-3" />
-                    )}
-                    {log.status}
-                  </Badge>
+                  <div className="flex items-center gap-1.5">
+                    <ConditionBadge value={log.condition} />
+                    <Badge variant={log.status === "Lunas" ? "success" : "destructive"}>
+                      {log.status === "Lunas" ? (
+                        <CheckCircle2 className="mr-1 h-3 w-3" />
+                      ) : (
+                        <XCircle className="mr-1 h-3 w-3" />
+                      )}
+                      {log.status}
+                    </Badge>
+                  </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Petugas: <span className="text-foreground font-medium">{log.user?.name ?? "-"}</span>
