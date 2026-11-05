@@ -1,5 +1,5 @@
 import { settingRepository } from "@/repositories/content.repository";
-import { MapPin, Phone, Mail, Clock, Building2 } from "lucide-react";
+import { MapPin, Clock, Building2 } from "lucide-react";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {

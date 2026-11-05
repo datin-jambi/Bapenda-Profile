@@ -132,11 +132,12 @@ function SelokoRegulationsPage() {
   // ── Mutations ──────────────────────────────────────────────────────────────
 
   const saveMutation = useMutation({
-    mutationFn: (payload: RegulationInput & { oldFileId?: string }) => {
+    mutationFn: async (payload: RegulationInput & { oldFileId?: string }) => {
       const { oldFileId, ...body } = payload;
-      return editItem
-        ? api.put(`/seloko/regulations/${editItem.id}`, { ...body, oldFileId })
-        : api.post("/seloko/regulations", body);
+      const res = editItem
+        ? await api.put(`/seloko/regulations/${editItem.id}`, { ...body, oldFileId })
+        : await api.post("/seloko/regulations", body);
+      return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["seloko-regulations"] });

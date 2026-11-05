@@ -1,14 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import {
     Info,
     FileText,
     Scale,
     Users,
     Search,
-    Mail,
-    Phone,
-    MapPin,
     Clock,
     HelpCircle,
     BookOpen,

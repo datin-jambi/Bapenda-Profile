@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Facebook, Twitter, Instagram, Youtube, MapPin, Phone, Mail, Clock } from "lucide-react";
+import { Facebook, Twitter, Instagram, Youtube, MapPin, Clock } from "lucide-react";
 import { settingRepository } from "@/repositories/content.repository";
 
 export async function PublicFooter() {

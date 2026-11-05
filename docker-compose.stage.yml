@@ -7,7 +7,7 @@ services:
     container_name: bapenda-profile-staging
     restart: unless-stopped
     ports:
-      - "3032:3032"
+      - "127.0.0.1:3032:3032"
     env_file:
       - .env.staging
     extra_hosts:

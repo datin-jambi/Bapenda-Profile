@@ -63,3 +63,10 @@ export class BadRequestError extends AppError {
     this.name = "BadRequestError";
   }
 }
+
+export class TooManyRequestsError extends AppError {
+  constructor(message = "Terlalu banyak permintaan. Silakan coba beberapa saat lagi.") {
+    super(message, 429);
+    this.name = "TooManyRequestsError";
+  }
+}

@@ -236,7 +236,7 @@ export function CameraScanner({ onDetected }: CameraScannerProps) {
       const totalPixels = rw * rh;
       let sum = 0;
       for (let i = 0; i < 256; i++) sum += i * histogram[i];
-      
+
       let sumB = 0;
       let wB = 0;
       let wF = 0;
@@ -385,7 +385,7 @@ export function CameraScanner({ onDetected }: CameraScannerProps) {
     try {
       const res = await fetch(
         process.env.NEXT_PUBLIC_PLATE_API_URL ??
-          "http://localhost:5000/api/detect-plate",
+        "http://localhost:5000/api/detect-plate",
         { method: "POST", body: form }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -577,11 +577,10 @@ export function CameraScanner({ onDetected }: CameraScannerProps) {
                       <button
                         key={device.id}
                         onClick={() => handleSwitch(device.id)}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs whitespace-nowrap transition ${
-                          selectedDevice === device.id
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs whitespace-nowrap transition ${selectedDevice === device.id
                             ? "border-primary bg-primary/5"
                             : "border-gray-200 hover:border-gray-300"
-                        }`}
+                          }`}
                       >
                         {selectedDevice === device.id ? (
                           <CheckCircle2 className="h-3 w-3 text-green-500" />

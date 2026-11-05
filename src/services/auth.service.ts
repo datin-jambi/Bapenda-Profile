@@ -3,9 +3,23 @@ import { userRepository } from "@/repositories/user.repository";
 import { signAccessToken, signRefreshToken, setAuthCookies, clearAuthCookies, getAuthUser } from "@/lib/auth";
 import { loginSchema } from "@/lib/validations";
 import { ApiResponse } from "@/lib/api-response";
-import { UnauthorizedError, ValidationError, NotFoundError } from "@/lib/errors";
+import { UnauthorizedError, ValidationError, NotFoundError, TooManyRequestsError } from "@/lib/errors";
+import { checkRateLimit, resetRateLimit } from "@/lib/rate-limit";
 
 export async function POST_login(request: NextRequest) {
+  // Rate limiting berdasarkan IP untuk mencegah brute-force attack
+  const forwarded = request.headers.get("x-forwarded-for");
+  const ip = forwarded ? forwarded.split(",")[0].trim() : (request.headers.get("x-real-ip") || "127.0.0.1");
+  const rateLimitKey = `login:${ip}`;
+
+  const rateCheck = checkRateLimit(rateLimitKey, 5, 15 * 60 * 1000); // Max 5 percobaan per 15 menit
+  if (!rateCheck.allowed) {
+    const minutes = Math.ceil(rateCheck.retryAfterSeconds / 60);
+    throw new TooManyRequestsError(
+      `Terlalu banyak percobaan login yang gagal. Akses dibatasi sementara selama ${minutes} menit demi keamanan.`
+    );
+  }
+
   const body = await request.json();
   const parsed = loginSchema.safeParse(body);
   if (!parsed.success) {
@@ -21,6 +35,9 @@ export async function POST_login(request: NextRequest) {
   if (!valid) {
     throw new UnauthorizedError("Email atau password salah");
   }
+
+  // Reset rate limit jika login berhasil
+  resetRateLimit(rateLimitKey);
 
   const accessToken = await signAccessToken({
     sub: user.id, email: user.email, role: user.role,

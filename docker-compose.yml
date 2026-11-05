@@ -16,7 +16,7 @@ services:
     container_name: bapenda-profile
     restart: always
     ports:
-      - "0.0.0.0:3031:3031"
+      - "127.0.0.1:3031:3031"
     env_file:
       - .env
     extra_hosts:

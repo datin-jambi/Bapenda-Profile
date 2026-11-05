@@ -8,7 +8,7 @@ COPY package.json package-lock.json* ./
 
 # Use npm ci for strict, reproducible installs
 # --ignore-scripts prevents arbitrary code execution from malicious packages
-RUN npm ci --ignore-scripts --frozen-lockfile
+RUN npm ci --ignore-scripts
 
 # Explicitly build native modules needed at runtime
 RUN npm rebuild sharp

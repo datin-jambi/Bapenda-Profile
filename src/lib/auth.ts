@@ -3,12 +3,25 @@ import { cookies } from "next/headers";
 import { JwtPayload, AuthUser } from "@/types";
 import { Role } from "@prisma/client";
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "fallback-secret-min-32-chars-long!!"
-);
-const JWT_REFRESH_SECRET = new TextEncoder().encode(
-  process.env.JWT_REFRESH_SECRET || "fallback-refresh-secret-min-32-chars!!"
-);
+function getJwtSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET;
+  if (process.env.NODE_ENV === "production") {
+    if (!secret || secret.length < 32) {
+      throw new Error("SECURITY ERROR: JWT_SECRET wajib diisi di .env dan minimal 32 karakter pada mode production!");
+    }
+  }
+  return new TextEncoder().encode(secret || "fallback-secret-min-32-chars-long-development-only!!");
+}
+
+function getJwtRefreshSecret(): Uint8Array {
+  const secret = process.env.JWT_REFRESH_SECRET;
+  if (process.env.NODE_ENV === "production") {
+    if (!secret || secret.length < 32) {
+      throw new Error("SECURITY ERROR: JWT_REFRESH_SECRET wajib diisi di .env dan minimal 32 karakter pada mode production!");
+    }
+  }
+  return new TextEncoder().encode(secret || "fallback-refresh-secret-min-32-chars-development-only!!");
+}
 
 export const ACCESS_TOKEN_EXPIRY = process.env.JWT_EXPIRES_IN ?? "15m";
 export const REFRESH_TOKEN_EXPIRY = process.env.JWT_REFRESH_EXPIRES_IN ?? "7d";
@@ -45,7 +58,7 @@ export async function generateAccessToken(payload: Omit<JwtPayload, "iat" | "exp
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(ACCESS_TOKEN_EXPIRY)
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 }
 
 export async function generateRefreshToken(sub: number): Promise<string> {
@@ -53,7 +66,7 @@ export async function generateRefreshToken(sub: number): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(REFRESH_TOKEN_EXPIRY)
-    .sign(JWT_REFRESH_SECRET);
+    .sign(getJwtRefreshSecret());
 }
 
 // ─── Aliases for backward compatibility ──────────────────────────────────────
@@ -65,7 +78,7 @@ export const signRefreshToken = generateRefreshToken;
 
 export async function verifyAccessToken(token: string): Promise<JwtPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getJwtSecret());
     return payload as unknown as JwtPayload;
   } catch {
     return null;
@@ -74,7 +87,7 @@ export async function verifyAccessToken(token: string): Promise<JwtPayload | nul
 
 export async function verifyRefreshToken(token: string): Promise<{ sub: string } | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_REFRESH_SECRET);
+    const { payload } = await jwtVerify(token, getJwtRefreshSecret());
     if (!payload.sub) return null;
     return { sub: payload.sub as string };
   } catch {

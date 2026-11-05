@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 
 # Use npm ci with --ignore-scripts for supply chain attack prevention
-RUN npm ci --ignore-scripts --frozen-lockfile
+RUN npm ci --ignore-scripts
 
 # Explicitly build native modules needed at runtime
 RUN npm rebuild sharp
