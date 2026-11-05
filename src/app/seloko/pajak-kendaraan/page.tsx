@@ -353,7 +353,7 @@ function CekPajakPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
         {/* Form Card */}
         <div className="lg:col-span-1 space-y-4">
           {/* Input Nopol */}
@@ -373,6 +373,7 @@ function CekPajakPage() {
                   placeholder="contoh: Jl. Merdeka, Kota Jambi"
                   value={lokasi}
                   onChange={(e) => setLokasi(e.target.value)}
+                  className="text-base md:text-sm"
                 />
               </div>
 
@@ -383,6 +384,7 @@ function CekPajakPage() {
                   rows={3}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
+                  className="text-base md:text-sm"
                 />
               </div>
 
@@ -402,14 +404,24 @@ function CekPajakPage() {
                       }
                     }}
                     disabled={!!checkResult}
+                    className="font-mono tracking-wide text-base md:text-sm"
+                    inputMode="text"
+                    autoCapitalize="characters"
+                    autoComplete="off"
+                    spellCheck={false}
+                    enterKeyHint="search"
                   />
                   {!checkResult ? (
                     <>
                       <CameraScanner onDetected={handleCameraDetected} />
                       <Button
                         type="button"
+                        size="icon"
                         onClick={handleCheck}
                         disabled={checkMutation.isPending || !nopolInput.trim()}
+                        className="h-11 w-11 shrink-0 md:h-9 md:w-9"
+                        aria-label="Cek nomor polisi"
+                        title="Cek nomor polisi"
                       >
                         {checkMutation.isPending ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -419,7 +431,12 @@ function CekPajakPage() {
                       </Button>
                     </>
                   ) : (
-                    <Button type="button" variant="outline" onClick={handleReset}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleReset}
+                      className="h-11 shrink-0 md:h-9"
+                    >
                       Reset
                     </Button>
                   )}
@@ -467,7 +484,7 @@ function CekPajakPage() {
                     Kondisi <span className="text-red-500">*</span>
                   </Label>
                   <Select value={condition} onValueChange={setCondition}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full h-11 md:h-9">
                       <SelectValue placeholder="Pilih kondisi kendaraan" />
                     </SelectTrigger>
                     <SelectContent>
@@ -489,7 +506,7 @@ function CekPajakPage() {
               {/* Save Button */}
               <Button
                 type="button"
-                className="w-full"
+                className="w-full h-11 md:h-10"
                 onClick={handleSave}
                 disabled={!checkResult || !condition || saveMutation.isPending}
               >
@@ -640,9 +657,9 @@ function CekPajakPage() {
               <CardTitle className="text-base">Riwayat Pengecekan</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Pencarian & filter */}
-              <div className="flex flex-col sm:flex-row gap-2">
-                <div className="relative flex-1">
+              {/* Pencarian & filter — di HP: cari selebar kartu, dua filter berdampingan */}
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row">
+                <div className="relative col-span-2 sm:flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Cari nomor polisi..."
@@ -651,7 +668,9 @@ function CekPajakPage() {
                       setSearchInput(e.target.value);
                       setPage(1);
                     }}
-                    className="pl-9"
+                    className="pl-9 h-11 md:h-10 text-base md:text-sm"
+                    inputMode="search"
+                    enterKeyHint="search"
                   />
                 </div>
 
@@ -662,7 +681,7 @@ function CekPajakPage() {
                     setPage(1);
                   }}
                 >
-                  <SelectTrigger className="w-full sm:w-[150px]">
+                  <SelectTrigger className="w-full h-11 md:h-9 sm:w-[150px]">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -679,7 +698,7 @@ function CekPajakPage() {
                     setPage(1);
                   }}
                 >
-                  <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectTrigger className="w-full h-11 md:h-9 sm:w-[180px]">
                     <SelectValue placeholder="Kondisi" />
                   </SelectTrigger>
                   <SelectContent>
@@ -696,7 +715,7 @@ function CekPajakPage() {
                   <Button
                     type="button"
                     variant="ghost"
-                    className="text-muted-foreground"
+                    className="col-span-2 h-11 sm:col-auto sm:h-9 text-muted-foreground"
                     onClick={() => {
                       setStatusFilter("all");
                       setConditionFilter("all");
@@ -705,7 +724,7 @@ function CekPajakPage() {
                     }}
                   >
                     <X className="mr-1 h-4 w-4" />
-                    Reset
+                    Reset filter
                   </Button>
                 )}
               </div>
@@ -781,12 +800,14 @@ function InfoRow({
   bold?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between text-sm">
-      <div className="flex items-center gap-2 text-muted-foreground">
+    <div className="flex items-center justify-between gap-3 text-sm">
+      <div className="flex items-center gap-2 text-muted-foreground shrink-0">
         {icon}
         {label}
       </div>
-      <span className={bold ? "font-bold font-mono" : ""}>{value}</span>
+      <span className={`text-right break-words min-w-0 ${bold ? "font-bold font-mono" : ""}`}>
+        {value}
+      </span>
     </div>
   );
 }

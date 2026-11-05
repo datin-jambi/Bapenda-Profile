@@ -539,6 +539,7 @@ export function CameraScanner({ onDetected }: CameraScannerProps) {
         size="icon"
         onClick={handleOpen}
         title="Scan plat nomor"
+        className="h-11 w-11 shrink-0 md:h-9 md:w-9"
       >
         <Camera className="h-4 w-4" />
       </Button>
