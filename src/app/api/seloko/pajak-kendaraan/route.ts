@@ -7,6 +7,7 @@ import { withErrorHandler } from "@/lib/with-error-handler";
 import { UnauthorizedError, ForbiddenError, ValidationError } from "@/lib/errors";
 import { hasPermission } from "@/types";
 import { pkbFetch } from "@/lib/pkb";
+import { syncVehicleCondition } from "@/lib/vehicle-condition-sync";
 
 interface KendaraanData {
   no_polisi: string;
@@ -224,5 +225,19 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     lokasi: parsed.data.lokasi,
   });
 
-  return ApiResponse.created(log, "Log pengecekan berhasil disimpan");
+  // Proses kedua: kirim kondisi ke API Samsat. Log sudah tersimpan, jadi
+  // kegagalan di sini hanya dilaporkan — tidak membatalkan penyimpanan.
+  const conditionSync = await syncVehicleCondition({
+    licensePlate: log.licensePlate,
+    condition: log.condition,
+    checkedAt: log.createdAt,
+    officerName: user.name ?? user.email,
+  });
+
+  return ApiResponse.created(
+    { ...log, conditionSync },
+    conditionSync.success
+      ? "Log pengecekan berhasil disimpan dan kondisi terkirim ke Samsat"
+      : "Log pengecekan berhasil disimpan"
+  );
 });

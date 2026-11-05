@@ -96,6 +96,14 @@ type CheckResult = {
   checkedAt: string;
 };
 
+/** Status pengiriman kondisi ke API Samsat (proses kedua setelah simpan log). */
+type ConditionSync = {
+  skipped?: boolean;
+  success: boolean;
+  message: string;
+  httpStatus?: number;
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Pilihan kondisi kendaraan yang disimpan di kolom `condition`. */
@@ -236,10 +244,18 @@ function CekPajakPage() {
 
   const saveMutation = useMutation({
     mutationFn: (payload: VehicleTaxCheckInput) =>
-      api.post("/seloko/pajak-kendaraan", payload),
-    onSuccess: () => {
+      api.post("/seloko/pajak-kendaraan", payload).then((r) => r.data as { data?: { conditionSync?: ConditionSync } }),
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["cek-pajak"] });
-      toast.success("Log pengecekan berhasil disimpan");
+      const sync = res?.data?.conditionSync;
+      if (sync && !sync.success && !sync.skipped) {
+        // Log tetap tersimpan; yang gagal hanya pengiriman ke Samsat.
+        toast.warning(`Log tersimpan, namun gagal dikirim ke Samsat: ${sync.message}`, {
+          duration: 8000,
+        });
+      } else {
+        toast.success("Log pengecekan berhasil disimpan");
+      }
       setCheckResult(null);
       setNopolInput("");
       // Kondisi melekat pada kendaraan yang baru dicek, jadi ikut direset —
