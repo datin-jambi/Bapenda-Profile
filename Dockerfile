@@ -59,7 +59,7 @@ RUN env | grep '^NEXT_PUBLIC_' > build-public-env || true
 
 # Stage 3: Production runner
 FROM node:20-alpine AS runner
-RUN apk add --no-cache openssl wget
+RUN apk add --no-cache openssl wget ca-certificates
 WORKDIR /app
 
 ENV NODE_ENV=production
