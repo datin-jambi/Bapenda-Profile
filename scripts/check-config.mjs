@@ -2,6 +2,7 @@
 // Tidak pernah mencetak secret: URL hanya host:port/db, secret hanya panjangnya.
 // Tidak menghentikan start; hanya melapor. Jalankan manual: node scripts/check-config.mjs
 import fs from "node:fs";
+import tls from "node:tls";
 import { PrismaClient } from "@prisma/client";
 
 const env = process.env;
@@ -28,6 +29,50 @@ async function reach(name, url) {
   }
 }
 
+/** CA bundle sistem, dipakai juga oleh src/lib/pkb.ts. */
+function systemCa() {
+  for (const p of ["/etc/ssl/certs/ca-certificates.crt", "/etc/pki/tls/certs/ca-bundle.crt", "/etc/ssl/cert.pem"]) {
+    try { return fs.readFileSync(p, "utf8"); } catch { /* coba path berikutnya */ }
+  }
+  return "";
+}
+
+/**
+ * Cek TLS ke upstream dengan store default Node DAN dengan CA sistem, sambil
+ * mencetak chain yang benar-benar disajikan. Ini yang membedakan "chain tidak
+ * lengkap" dari "root tidak ada di store" saat verifikasi gagal.
+ */
+async function tlsProbe(name, url) {
+  const u = new URL(url);
+  const ca = systemCa();
+  const probe = (opts) =>
+    new Promise((resolve) => {
+      const s = tls.connect(
+        { host: u.hostname, port: Number(u.port || 443), servername: u.hostname, ...opts },
+        () => {
+          const chain = [];
+          let cur = s.getPeerCertificate(true);
+          while (cur?.subject) {
+            chain.push(`${cur.subject.CN ?? cur.subject.O} <- ${cur.issuer?.CN ?? cur.issuer?.O}`);
+            if (cur.issuerCertificate === cur) break;
+            cur = cur.issuerCertificate;
+          }
+          resolve({ ok: s.authorized, err: s.authorizationError, chain });
+          s.end();
+        }
+      );
+      s.setTimeout(5000, () => { s.destroy(); resolve({ ok: false, err: "timeout", chain: [] }); });
+      s.on("error", (e) => resolve({ ok: false, err: e.code || e.message, chain: [] }));
+    });
+
+  const sys = await probe(ca ? { ca } : {});
+  const chainTxt = sys.chain.length ? sys.chain.join(" | ") : "(tidak ada chain)";
+  if (sys.ok) line("OK", name, `TLS terverifikasi (CA sistem) ${urlInfo(url)}`);
+  else bad(name, `TLS gagal: ${sys.err} | chain: ${chainTxt} ${urlInfo(url)}`);
+  line("INFO", `${name} (store Node)`, sys.ok ? "OK" : `gagal: ${sys.err}`);
+  line("INFO", `${name} (chain)`, chainTxt);
+}
+
 async function db(name, url) {
   if (!url) return;
   const prisma = new PrismaClient({ datasourceUrl: url });
@@ -47,10 +92,13 @@ console.log(`  Waktu    : ${new Date().toLocaleString("id-ID", { timeZone: "Asia
 console.log(`  NODE_ENV : ${env.NODE_ENV}   PORT: ${env.PORT}   Node: ${process.version}`);
 
 console.log("-- Variabel runtime (.env)");
-const urls = ["DATABASE_URL", "DIRECT_URL", "IMAGEKIT_URL_ENDPOINT", "PKB_API_HOST"];
+const urls = ["DATABASE_URL", "IMAGEKIT_URL_ENDPOINT", "PKB_API_HOST"];
+const optionalUrls = ["DIRECT_URL"];
 const secrets = ["JWT_SECRET", "JWT_REFRESH_SECRET", "IMAGEKIT_PUBLIC_KEY", "IMAGEKIT_PRIVATE_KEY", "PKB_API_TOKEN"];
 const plain = ["JWT_EXPIRES_IN", "JWT_REFRESH_EXPIRES_IN"];
 for (const k of urls) env[k] ? line("OK", k, urlInfo(env[k])) : bad(k, "KOSONG");
+// DIRECT_URL hanya perlu bila migrasi butuh koneksi langsung (mis. Supabase).
+for (const k of optionalUrls) env[k] ? line("OK", k, urlInfo(env[k])) : line("INFO", k, "kosong — tidak dipakai");
 for (const k of secrets) {
   if (!env[k]) bad(k, "KOSONG");
   else if (k.startsWith("JWT") && env[k].length < 32) bad(k, `terlalu pendek (${env[k].length} karakter, min 32)`);
@@ -83,7 +131,7 @@ if (built) {
 console.log("-- Koneksi");
 await db("DB DATABASE_URL (app)", env.DATABASE_URL);
 await db("DB DIRECT_URL (migrasi)", env.DIRECT_URL);
-if (env.PKB_API_HOST) await reach("PKB_API_HOST", env.PKB_API_HOST);
+if (env.PKB_API_HOST) await tlsProbe("PKB_API_HOST", env.PKB_API_HOST);
 if (env.IMAGEKIT_URL_ENDPOINT) await reach("IMAGEKIT_URL_ENDPOINT", env.IMAGEKIT_URL_ENDPOINT);
 
 console.log(problems

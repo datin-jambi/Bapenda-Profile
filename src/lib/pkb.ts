@@ -72,10 +72,19 @@ export function pkbFetchRaw(
     );
     req.on("timeout", () => req.destroy(new Error("Timeout menghubungi API Samsat")));
     req.on("error", (err) => {
-      // Diagnostik: cert apa yang sebenarnya disajikan upstream ke container ini.
-      const peer = (req.socket as import("node:tls").TLSSocket | null)?.getPeerCertificate?.();
-      if (peer?.issuer) {
-        console.error(`[pkb] peer cert: subject="${peer.subject?.CN}" issuer="${peer.issuer?.CN ?? peer.issuer?.O}" kode=${(err as NodeJS.ErrnoException).code ?? "-"}`);
+      // Diagnostik: chain cert yang benar-benar disajikan upstream ke container ini.
+      // Ikut ditempel ke pesan error supaya kelihatan di UI, tanpa perlu buka log server.
+      const peer = (req.socket as import("node:tls").TLSSocket | null)?.getPeerCertificate?.(true);
+      if (peer?.subject) {
+        const chain: string[] = [];
+        let cur: typeof peer | undefined = peer;
+        while (cur?.subject && chain.length < 6) {
+          chain.push(`${cur.subject.CN ?? cur.subject.O} <- ${cur.issuer?.CN ?? cur.issuer?.O}`);
+          if (cur.issuerCertificate === cur) break;
+          cur = cur.issuerCertificate;
+        }
+        (err as Error & { pkbChain?: string }).pkbChain = chain.join(" | ");
+        console.error(`[pkb] peer cert: ${chain.join(" | ")} kode=${(err as NodeJS.ErrnoException).code ?? "-"}`);
       }
       reject(err);
     });
@@ -94,8 +103,9 @@ export async function pkbFetch<T>(endpoint: PkbEndpoint, nopol: string): Promise
     res = await pkbFetchRaw(endpoint, nopol);
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
-    console.error(`[pkb] ${endpoint} ${nopol} gagal: ${reason}`);
-    throw new PkbUpstreamError(`Gagal menghubungi API Samsat: ${reason}`);
+    const chain = (err as { pkbChain?: string }).pkbChain;
+    console.error(`[pkb] ${endpoint} ${nopol} gagal: ${reason}${chain ? ` | chain: ${chain}` : ""}`);
+    throw new PkbUpstreamError(`Gagal menghubungi API Samsat: ${reason}${chain ? ` [chain: ${chain}]` : ""}`);
   }
 
   let json: { status?: boolean; message?: string; data?: T };
