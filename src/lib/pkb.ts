@@ -1,6 +1,7 @@
 import { request as httpsRequest } from "node:https";
-import { checkServerIdentity } from "node:tls";
+import { checkServerIdentity, rootCertificates } from "node:tls";
 import { PkbUpstreamError } from "./errors";
+import { PKB_CA_PEM } from "./pkb-ca";
 
 // api-pkb.jambisamsat.net menyajikan sertifikat untuk seloko.jambisamsat.net,
 // sehingga browser menolaknya (ERR_CERT_COMMON_NAME_INVALID) dan fetch biasa
@@ -38,6 +39,8 @@ export function pkbFetchRaw(
       url,
       {
         headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
+        // Root bawaan Node + GTS (WE1/R4) yang tidak ada di bundle Node 20 lama.
+        ca: [...rootCertificates, PKB_CA_PEM],
         checkServerIdentity: (_host, cert) => checkServerIdentity(CERT_CN, cert),
         timeout: 20_000,
       },
