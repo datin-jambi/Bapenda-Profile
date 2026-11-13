@@ -11,7 +11,7 @@ import { syncVehicleCondition } from "@/lib/vehicle-condition-sync";
 
 interface KendaraanData {
   no_polisi: string;
-  nm_merek_kb: string;
+  merek?: { kode: number; nama: string };
   nm_model_kb: string;
   nm_jenis_kb: string;
   th_rakitan: string;
@@ -187,7 +187,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         licensePlate: kendaraan.no_polisi,
         status,
         kendaraan: {
-          merek: kendaraan.nm_merek_kb,
+          merek: kendaraan.merek?.nama ?? "-",
           model: kendaraan.nm_model_kb,
           jenis: kendaraan.nm_jenis_kb,
           tahun: kendaraan.th_rakitan,

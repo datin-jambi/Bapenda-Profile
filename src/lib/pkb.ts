@@ -1,5 +1,6 @@
 import { request as httpsRequest } from "node:https";
 import { checkServerIdentity } from "node:tls";
+import { PkbUpstreamError } from "./errors";
 
 // api-pkb.jambisamsat.net menyajikan sertifikat untuk seloko.jambisamsat.net,
 // sehingga browser menolaknya (ERR_CERT_COMMON_NAME_INVALID) dan fetch biasa
@@ -22,9 +23,12 @@ export type PkbEndpoint = keyof typeof PKB_ENDPOINTS;
 
 export const isPkbEndpoint = (v: string): v is PkbEndpoint => v in PKB_ENDPOINTS;
 
-/** Ambil body mentah dari API Samsat. Melempar bila koneksi gagal. */
-export function pkbFetchRaw(endpoint: PkbEndpoint, nopol: string): Promise<string> {
-  if (!HOST || !TOKEN) throw new Error("PKB API belum dikonfigurasi");
+/** Ambil body mentah + status HTTP dari API Samsat. Melempar bila koneksi gagal. */
+export function pkbFetchRaw(
+  endpoint: PkbEndpoint,
+  nopol: string
+): Promise<{ status: number; body: string }> {
+  if (!HOST || !TOKEN) throw new PkbUpstreamError("PKB API belum dikonfigurasi");
 
   const url = new URL(HOST + PKB_ENDPOINTS[endpoint]);
   url.searchParams.set("nopol", nopol);
@@ -41,7 +45,9 @@ export function pkbFetchRaw(endpoint: PkbEndpoint, nopol: string): Promise<strin
         let buf = "";
         res.setEncoding("utf8");
         res.on("data", (c) => (buf += c));
-        res.on("end", () => resolve(buf));
+        res.on("end", () => resolve({ status: res.statusCode ?? 0, body: buf }));
+        // Tanpa handler ini, socket error di tengah respons = uncaught exception.
+        res.on("error", reject);
       }
     );
     req.on("timeout", () => req.destroy(new Error("Timeout menghubungi API Samsat")));
@@ -50,12 +56,36 @@ export function pkbFetchRaw(endpoint: PkbEndpoint, nopol: string): Promise<strin
   });
 }
 
-/** Versi terparsing: mengembalikan `data` bila sukses, `null` bila gagal/kosong. */
+/**
+ * Versi terparsing: `data` bila sukses, `null` bila kendaraan memang tidak ada.
+ * Kegagalan koneksi/konfigurasi dilempar sebagai PkbUpstreamError (502) supaya
+ * tidak menyamar jadi "data tidak ditemukan" (404).
+ */
 export async function pkbFetch<T>(endpoint: PkbEndpoint, nopol: string): Promise<T | null> {
+  let res: { status: number; body: string };
   try {
-    const json = JSON.parse(await pkbFetchRaw(endpoint, nopol));
-    return json.status && json.data ? (json.data as T) : null;
-  } catch {
-    return null;
+    res = await pkbFetchRaw(endpoint, nopol);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    console.error(`[pkb] ${endpoint} ${nopol} gagal: ${reason}`);
+    throw new PkbUpstreamError(`Gagal menghubungi API Samsat: ${reason}`);
   }
+
+  let json: { status?: boolean; message?: string; data?: T };
+  try {
+    json = JSON.parse(res.body);
+  } catch {
+    console.error(`[pkb] ${endpoint} ${nopol} respons bukan JSON (HTTP ${res.status}): ${res.body.slice(0, 200)}`);
+    throw new PkbUpstreamError(`Respons API Samsat tidak valid (HTTP ${res.status})`);
+  }
+
+  if (json.status && json.data) return json.data;
+
+  // 400/404 = nopol tidak terdaftar. Selain itu (401 token, 5xx) = gangguan upstream.
+  if (res.status === 400 || res.status === 404) return null;
+
+  console.error(`[pkb] ${endpoint} ${nopol} HTTP ${res.status}: ${json.message ?? res.body.slice(0, 200)}`);
+  throw new PkbUpstreamError(
+    `API Samsat menolak permintaan (HTTP ${res.status}): ${json.message ?? "tanpa pesan"}`
+  );
 }

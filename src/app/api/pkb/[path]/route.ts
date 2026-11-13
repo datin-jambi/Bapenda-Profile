@@ -15,7 +15,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ path: strin
   }
 
   try {
-    const body = await pkbFetchRaw(path, nopol);
+    const { body } = await pkbFetchRaw(path, nopol);
     return new NextResponse(body, { headers: { "Content-Type": "application/json" } });
   } catch {
     return NextResponse.json({ status: false, message: "Gagal menghubungi API Samsat" }, { status: 502 });

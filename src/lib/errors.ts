@@ -64,6 +64,13 @@ export class BadRequestError extends AppError {
   }
 }
 
+export class PkbUpstreamError extends AppError {
+  constructor(message = "Gagal menghubungi API Samsat") {
+    super(message, 502);
+    this.name = "PkbUpstreamError";
+  }
+}
+
 export class TooManyRequestsError extends AppError {
   constructor(message = "Terlalu banyak permintaan. Silakan coba beberapa saat lagi.") {
     super(message, 429);
