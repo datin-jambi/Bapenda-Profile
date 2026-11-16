@@ -15,9 +15,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ path: strin
   }
 
   try {
-    const { body } = await pkbFetchRaw(path, nopol);
-    return new NextResponse(body, { headers: { "Content-Type": "application/json" } });
-  } catch {
-    return NextResponse.json({ status: false, message: "Gagal menghubungi API Samsat" }, { status: 502 });
+    // Status upstream diteruskan supaya klien bisa membedakan 404 (tidak terdaftar) dari 5xx.
+    const { status, body } = await pkbFetchRaw(path, nopol);
+    return new NextResponse(body, { status: status || 502, headers: { "Content-Type": "application/json" } });
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : "tidak diketahui";
+    return NextResponse.json({ status: false, message: `Gagal menghubungi API Samsat: ${reason}` }, { status: 502 });
   }
 }
