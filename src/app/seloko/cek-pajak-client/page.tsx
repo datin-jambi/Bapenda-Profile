@@ -142,9 +142,20 @@ type PajakData = {
 type JRData = { total_tarif: { total: number } };
 type PNBPData = { pnbp: { total: string } };
 
+// Diagnosis only: token ikut ke bundle browser (NEXT_PUBLIC_*), siapa pun bisa melihatnya.
+const PKB_HOST = process.env.NEXT_PUBLIC_PKB_API_HOST;
+const PKB_TOKEN = process.env.NEXT_PUBLIC_PKB_API_TOKEN;
+const PKB_PATHS: Record<string, string> = {
+  "kendaraan-detail": "/kendaraan/detail",
+  "kendaraan-pnbp": "/kendaraan/pnbp",
+  "pajak-detail": "/pajak/detail",
+  "jr-detail": "/jr/detail",
+};
+
 async function pkbCall<T>(path: string, nopol: string): Promise<T | null> {
-  const url = `/api/pkb/${path}?nopol=${encodeURIComponent(nopol)}`;
-  const res = await fetch(url);
+  if (!PKB_HOST || !PKB_TOKEN) throw new Error("NEXT_PUBLIC_PKB_API_HOST / NEXT_PUBLIC_PKB_API_TOKEN belum di-set");
+  const url = `${PKB_HOST}${PKB_PATHS[path]}?nopol=${encodeURIComponent(nopol)}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${PKB_TOKEN}` } });
   const text = await res.text();
   console.groupCollapsed(`[cek-pajak-client] ${path} ${nopol} -> HTTP ${res.status}`);
   console.log("url:", url);
