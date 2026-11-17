@@ -3,7 +3,8 @@
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/axios";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Newspaper, Images, HelpCircle, Clock, Users, TrendingUp, Eye } from "lucide-react";
+import { Newspaper, Images, HelpCircle, Clock, Users, TrendingUp, Eye, Car, CheckCircle2, XCircle, ClipboardList } from "lucide-react";
+import Link from "next/link";
 import { useAuthStore } from "@/store";
 import { formatDate } from "@/lib/utils";
 import { useMounted } from "@/hooks/use-mounted";
@@ -11,6 +12,34 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line, CartesianGrid,
 } from "recharts";
+
+// Cakupan per role ada di docs/dashboard.md. Data di-filter di API
+// (src/app/api/seloko/dashboard/stats/route.ts); halaman hanya menampilkan.
+
+type Counts = { news: number; gallery: number; faq: number };
+type NewsStatusRow = { status: string; count: number };
+type MonthRow = { month: string; count: number };
+type RecentLog = { id: number; action: string; entityType: string; createdAt: string; user: { name: string } };
+type TopFaq = { id: number; question: string; viewCount: number };
+type TaxSummary = { today: number; belumLunas: number; lunas: number; total: number };
+type PetugasTax = {
+  today: number; month: number; total: number; belumLunas: number; lunas: number;
+  recentLogs: { id: number; licensePlate: string; status: string; condition: string | null; createdAt: string }[];
+};
+type Stats = {
+  role: string;
+  counts?: Counts;
+  newsByStatus?: NewsStatusRow[];
+  galleryByStatus?: NewsStatusRow[];
+  newsPerMonth?: MonthRow[];
+  publishedNews?: number;
+  pendingNews?: number;
+  usersByRole?: { role: string; count: number }[] | null;
+  newsByCategory?: { category: string; count: number }[] | null;
+  recentActivity?: RecentLog[] | null;
+  topFaqs?: TopFaq[];
+  tax?: TaxSummary | PetugasTax | null;
+};
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: "#94a3b8",
@@ -29,38 +58,283 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const ROLE_COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#3b82f6"];
-
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
-
-function StatCard({ title, value, icon: Icon, sub, color }: {
-  title: string; value: number; icon: React.ElementType; sub?: string; color: string;
-}) {
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 max-sm:p-4 max-sm:pb-1">
-        <CardTitle className="text-sm font-medium text-muted-foreground max-sm:text-xs">{title}</CardTitle>
-        <div className={`p-2 rounded-md ${color}`}>
-          <Icon className="h-4 w-4 text-white" />
-        </div>
-      </CardHeader>
-      <CardContent className="max-sm:p-4 max-sm:pt-0">
-        <div className="text-3xl font-bold text-primary max-sm:text-2xl">{value}</div>
-        {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
-      </CardContent>
-    </Card>
-  );
-}
+const CHART_H = 200;
 
 function formatMonthKey(key: string) {
   const [, m] = key.split("-");
   return MONTH_NAMES[parseInt(m, 10) - 1];
 }
 
+function toStatusData(rows: NewsStatusRow[] = []) {
+  return rows.map((s) => ({
+    name: STATUS_LABEL[s.status] ?? s.status,
+    value: s.count,
+    color: STATUS_COLORS[s.status] ?? "#94a3b8",
+  }));
+}
+
+function toMonthData(rows: MonthRow[] = []) {
+  return rows.map((m) => ({ month: formatMonthKey(m.month), Berita: m.count }));
+}
+
+function StatCard({ title, value, icon: Icon, sub, color }: {
+  title: string; value: number; icon: React.ElementType; sub?: string; color: string;
+}) {
+  return (
+    <Card>
+      <CardContent className="flex items-start justify-between gap-2 p-4">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-muted-foreground truncate">{title}</p>
+          <p className="text-2xl font-bold text-primary mt-1">{value}</p>
+          {sub && <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{sub}</p>}
+        </div>
+        <div className={`p-2 rounded-md shrink-0 ${color}`}>
+          <Icon className="h-4 w-4 text-white" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function Section({ title, icon: Icon, children }: {
+  title: string; icon: React.ElementType; children: React.ReactNode;
+}) {
+  return (
+    <Card>
+      <CardHeader className="p-4 pb-2">
+        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+          <Icon className="h-4 w-4 text-primary" />
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-4 pt-0">{children}</CardContent>
+    </Card>
+  );
+}
+
+function Empty({ text }: { text: string }) {
+  return <p className="text-sm text-muted-foreground text-center py-10">{text}</p>;
+}
+
+function MonthlyNewsChart({ rows }: { rows: MonthRow[] }) {
+  return (
+    <ResponsiveContainer width="100%" height={CHART_H}>
+      <LineChart data={toMonthData(rows)}>
+        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+        <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={28} />
+        <Tooltip />
+        <Line type="monotone" dataKey="Berita" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+function StatusPie({ rows }: { rows: NewsStatusRow[] }) {
+  const data = toStatusData(rows);
+  if (data.length === 0) return <Empty text="Belum ada data" />;
+  return (
+    <ResponsiveContainer width="100%" height={CHART_H}>
+      <PieChart>
+        <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65}>
+          {data.map((e, i) => <Cell key={i} fill={e.color} />)}
+        </Pie>
+        <Tooltip />
+        <Legend wrapperStyle={{ fontSize: 11 }} />
+      </PieChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ─── Petugas: hanya cek pajak miliknya ─────────────────────────────────────────
+
+function PetugasDashboard({ tax }: { tax: PetugasTax }) {
+  // Lindungi terhadap respons yang belum lengkap (mis. API versi lama).
+  const recentLogs = tax.recentLogs ?? [];
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard title="Cek hari ini" value={tax.today} icon={Car} color="bg-blue-500" sub="Pengecekan Anda" />
+        <StatCard title="Cek bulan ini" value={tax.month} icon={ClipboardList} color="bg-indigo-500" sub="Pengecekan Anda" />
+        <StatCard title="Belum lunas" value={tax.belumLunas} icon={XCircle} color="bg-red-500" sub="Dari total cek" />
+        <StatCard title="Lunas" value={tax.lunas} icon={CheckCircle2} color="bg-green-500" sub="Dari total cek" />
+      </div>
+
+      <Section title="Pengecekan Terakhir" icon={Clock}>
+        {recentLogs.length === 0 ? (
+          <Empty text="Belum ada pengecekan" />
+        ) : (
+          <div className="divide-y">
+            {recentLogs.map((log) => (
+              <div key={log.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                <div className="min-w-0">
+                  <p className="font-semibold tracking-wide truncate">{log.licensePlate}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {log.condition ?? "Kondisi belum diisi"} · {formatDate(new Date(log.createdAt))}
+                  </p>
+                </div>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded shrink-0 ${log.status === "Lunas" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+                  {log.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+        <Link href="/seloko/pajak-kendaraan" className="block mt-3 text-sm text-primary font-medium">
+          Buka Cek Pajak →
+        </Link>
+      </Section>
+    </>
+  );
+}
+
+// ─── Editor / Ketua_Uptd / Admin_Uptd: konten miliknya sendiri ─────────────────
+
+function KontenDashboard({ stats }: { stats: Stats }) {
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <StatCard title="Berita saya" value={stats.counts?.news ?? 0} icon={Newspaper} color="bg-blue-500" sub="Semua status" />
+        <StatCard title="Galeri saya" value={stats.counts?.gallery ?? 0} icon={Images} color="bg-purple-500" sub="Semua status" />
+        <StatCard title="Dipublikasi" value={stats.publishedNews ?? 0} icon={TrendingUp} color="bg-green-500" sub="Berita live" />
+      </div>
+
+      <Section title="Berita 6 Bulan Terakhir" icon={TrendingUp}>
+        <MonthlyNewsChart rows={stats.newsPerMonth ?? []} />
+      </Section>
+
+      <Section title="Status Berita Saya" icon={Newspaper}>
+        <StatusPie rows={stats.newsByStatus ?? []} />
+      </Section>
+    </>
+  );
+}
+
+// ─── Super_Admin / Admin: sistem + moderasi ────────────────────────────────────
+
+function AdminDashboard({ stats, isSuper }: { stats: Stats; isSuper: boolean }) {
+  const tax = stats.tax as TaxSummary | null | undefined;
+  const usersByRole = (stats.usersByRole ?? []).map((r) => ({ name: r.role.replace(/_/g, " "), value: r.count }));
+  const byCategory = (stats.newsByCategory ?? []).map((c) => ({ name: c.category, Berita: c.count }));
+  const galleryData = (stats.galleryByStatus ?? []).map((s) => ({ name: STATUS_LABEL[s.status] ?? s.status, Jumlah: s.count }));
+
+  return (
+    <>
+      {/* Moderasi: yang perlu tindakan dulu */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard title="Menunggu review" value={stats.pendingNews ?? 0} icon={Clock} color="bg-amber-500" sub="Perlu persetujuan" />
+        <StatCard title="Total berita" value={stats.counts?.news ?? 0} icon={Newspaper} color="bg-blue-500" sub={`${stats.publishedNews ?? 0} dipublikasi`} />
+        <StatCard title="Total galeri" value={stats.counts?.gallery ?? 0} icon={Images} color="bg-purple-500" sub="Semua status" />
+        <StatCard title="Total FAQ" value={stats.counts?.faq ?? 0} icon={HelpCircle} color="bg-green-500" sub="Semua pertanyaan" />
+      </div>
+
+      {tax && (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCard title="Cek pajak hari ini" value={tax.today} icon={Car} color="bg-blue-500" sub="Semua petugas" />
+          <StatCard title="Belum lunas" value={tax.belumLunas} icon={XCircle} color="bg-red-500" sub="Dari total cek" />
+          <StatCard title="Lunas" value={tax.lunas} icon={CheckCircle2} color="bg-green-500" sub="Dari total cek" />
+          <StatCard title="Total cek pajak" value={tax.total} icon={ClipboardList} color="bg-indigo-500" sub="Semua waktu" />
+        </div>
+      )}
+
+      <Section title="Berita 6 Bulan Terakhir" icon={TrendingUp}>
+        <MonthlyNewsChart rows={stats.newsPerMonth ?? []} />
+      </Section>
+
+      <Section title="Status Berita" icon={Newspaper}>
+        <StatusPie rows={stats.newsByStatus ?? []} />
+      </Section>
+
+      {byCategory.length > 0 && (
+        <Section title="Berita per Kategori" icon={Newspaper}>
+          <ResponsiveContainer width="100%" height={CHART_H}>
+            <BarChart data={byCategory}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={28} />
+              <Tooltip />
+              <Bar dataKey="Berita" fill="#6366f1" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Section>
+      )}
+
+      {isSuper && usersByRole.length > 0 && (
+        <Section title="Pengguna per Role" icon={Users}>
+          <ResponsiveContainer width="100%" height={CHART_H}>
+            <PieChart>
+              <Pie data={usersByRole} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65}>
+                {usersByRole.map((_, i) => <Cell key={i} fill={ROLE_COLORS[i % ROLE_COLORS.length]} />)}
+              </Pie>
+              <Tooltip />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </Section>
+      )}
+
+      {isSuper && galleryData.length > 0 && (
+        <Section title="Galeri per Status" icon={Images}>
+          <ResponsiveContainer width="100%" height={CHART_H}>
+            <BarChart data={galleryData} layout="vertical">
+              <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+              <YAxis dataKey="name" type="category" width={96} tick={{ fontSize: 10 }} />
+              <Tooltip />
+              <Bar dataKey="Jumlah" fill="#a855f7" radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Section>
+      )}
+
+      {(stats.topFaqs ?? []).length > 0 && (
+        <Section title="FAQ Paling Banyak Dilihat" icon={Eye}>
+          <div className="space-y-3">
+            {(stats.topFaqs ?? []).map((faq, i) => (
+              <div key={faq.id} className="flex items-center gap-3">
+                <span className="text-xs font-bold text-muted-foreground w-4">{i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm truncate">{faq.question}</p>
+                  <div className="w-full bg-muted rounded-full h-1.5 mt-1">
+                    <div
+                      className="bg-green-500 h-1.5 rounded-full"
+                      style={{ width: `${Math.min(100, (faq.viewCount / (stats.topFaqs?.[0]?.viewCount || 1)) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+                <span className="text-xs text-muted-foreground shrink-0">{faq.viewCount}x</span>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {(stats.recentActivity ?? []).length > 0 && (
+        <Section title="Aktivitas Terbaru" icon={Clock}>
+          <div className="divide-y">
+            {(stats.recentActivity ?? []).map((log) => (
+              <div key={log.id} className="flex items-center justify-between gap-2 py-2 text-sm">
+                <div className="min-w-0">
+                  <p className="font-medium truncate">{log.user.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{log.action} · {log.entityType}</p>
+                </div>
+                <span className="text-[11px] text-muted-foreground shrink-0">{formatDate(new Date(log.createdAt))}</span>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+    </>
+  );
+}
+
+// ─── Page ──────────────────────────────────────────────────────────────────────
+
 export default function DashboardPage() {
   const { user } = useAuthStore();
-  const isAdminOrSuper = user?.role === "Super_Admin" || user?.role === "Admin";
+  const role = user?.role;
 
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats, isLoading } = useQuery<Stats>({
     queryKey: ["dashboard-stats"],
     queryFn: () => api.get("/seloko/dashboard/stats").then((r) => r.data.data),
   });
@@ -73,293 +347,51 @@ export default function DashboardPage() {
   const hello = mounted ? `${greeting}, ${user?.name?.split(" ")[0] ?? ""}` : "";
   const today = mounted ? formatDate(new Date()) : "";
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-primary">{hello}</h1>
-          <p className="text-muted-foreground text-sm mt-1">{today} — Memuat data...</p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i}><CardContent className="h-24 animate-pulse bg-muted rounded mt-4" /></Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  const newsByStatusData = (stats?.newsByStatus ?? []).map((s: { status: string; count: number }) => ({
-    name: STATUS_LABEL[s.status] ?? s.status,
-    value: s.count,
-    color: STATUS_COLORS[s.status] ?? "#94a3b8",
-  }));
-
-  const galleryByStatusData = (stats?.galleryByStatus ?? []).map((s: { status: string; count: number }) => ({
-    name: STATUS_LABEL[s.status] ?? s.status,
-    value: s.count,
-    color: STATUS_COLORS[s.status] ?? "#94a3b8",
-  }));
-
-  const newsPerMonthData = (stats?.newsPerMonth ?? []).map((m: { month: string; count: number }) => ({
-    month: formatMonthKey(m.month),
-    Berita: m.count,
-  }));
-
-  const usersByRoleData = (stats?.usersByRole ?? []).map((r: { role: string; count: number }) => ({
-    name: r.role.replace(/_/g, " "),
-    value: r.count,
-  }));
-
-  const newsByCategoryData = (stats?.newsByCategory ?? []).map((c: { category: string; count: number }) => ({
-    name: c.category,
-    Berita: c.count,
-  }));
+  const subtitle =
+    role === "Petugas" ? "Ringkasan pengecekan pajak Anda"
+    : role === "Super_Admin" || role === "Admin" ? "Ringkasan sistem dan moderasi konten"
+    : "Ringkasan berita dan galeri Anda";
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-primary">
-          {hello} 👋
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          {today} — Selamat datang di Seloko BAPENDA Provinsi Jambi
+        <h1 className="text-xl font-bold text-primary md:text-2xl">{hello}</h1>
+        <p className="text-muted-foreground text-xs mt-1 md:text-sm">
+          {today} · {subtitle}
         </p>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-4">
-        <StatCard title="Total Berita" value={stats?.counts?.news ?? 0} icon={Newspaper} color="bg-blue-500" sub="Semua status" />
-        <StatCard title="Total Galeri" value={stats?.counts?.gallery ?? 0} icon={Images} color="bg-purple-500" sub="Semua status" />
-        <StatCard title="Total FAQ" value={stats?.counts?.faq ?? 0} icon={HelpCircle} color="bg-green-500" sub="Semua pertanyaan" />
-        <StatCard
-          title={isAdminOrSuper ? "Menunggu Review" : "Dipublikasi"}
-          value={isAdminOrSuper ? (stats?.pendingNews ?? 0) : (stats?.publishedNews ?? 0)}
-          icon={isAdminOrSuper ? Clock : TrendingUp}
-          color={isAdminOrSuper ? "bg-amber-500" : "bg-secondary"}
-          sub={isAdminOrSuper ? "Perlu persetujuan" : "Berita live"}
-        />
-      </div>
-
-      {/* Charts Row 1 */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* News per month line chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-primary" />
-              Berita 6 Bulan Terakhir
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={newsPerMonthData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Line type="monotone" dataKey="Berita" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* News by status pie */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Newspaper className="h-4 w-4 text-primary" />
-              Status Berita
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {newsByStatusData.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-16">Belum ada data</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie data={newsByStatusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75} label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`} labelLine={false}>
-                    {newsByStatusData.map((entry: { name: string; value: number; color: string }, i: number) => (
-                      <Cell key={i} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts Row 2 */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Gallery by status */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Images className="h-4 w-4 text-primary" />
-              Status Galeri
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {galleryByStatusData.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-16">Belum ada data</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={galleryByStatusData} layout="vertical">
-                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
-                  <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Bar dataKey="value" name="Jumlah" radius={[0, 4, 4, 0]}>
-                    {galleryByStatusData.map((entry: { name: string; value: number; color: string }, i: number) => (
-                      <Cell key={i} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Top viewed FAQs */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Eye className="h-4 w-4 text-primary" />
-              FAQ Paling Banyak Dilihat
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {(stats?.topFaqs ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">Belum ada data</p>
-            ) : (
-              (stats?.topFaqs ?? []).map((faq: { id: number; question: string; viewCount: number }, i: number) => (
-                <div key={faq.id} className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-muted-foreground w-4">{i + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm truncate">{faq.question}</p>
-                    <div className="w-full bg-muted rounded-full h-1.5 mt-1">
-                      <div
-                        className="bg-green-500 h-1.5 rounded-full"
-                        style={{ width: `${Math.min(100, (faq.viewCount / ((stats?.topFaqs[0]?.viewCount ?? 1) || 1)) * 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                  <span className="text-xs text-muted-foreground shrink-0">{faq.viewCount}x</span>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Admin / Super Admin only charts */}
-      {isAdminOrSuper && (
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* Users by role */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <Users className="h-4 w-4 text-primary" />
-                Pengguna per Role
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {usersByRoleData.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-16">Belum ada data</p>
-              ) : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie data={usersByRoleData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75}>
-                      {usersByRoleData.map((_: unknown, i: number) => (
-                        <Cell key={i} fill={ROLE_COLORS[i % ROLE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* News by category bar chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <Newspaper className="h-4 w-4 text-primary" />
-                Berita per Kategori
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {newsByCategoryData.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-16">Belum ada data</p>
-              ) : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={newsByCategoryData}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    <Bar dataKey="Berita" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
+      {isLoading || !stats ? (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}><CardContent className="h-20 animate-pulse bg-muted rounded m-4" /></Card>
+          ))}
         </div>
+      ) : role === "Petugas" && stats.tax ? (
+        <PetugasDashboard tax={stats.tax as PetugasTax} />
+      ) : role === "Super_Admin" || role === "Admin" ? (
+        <AdminDashboard stats={stats} isSuper={role === "Super_Admin"} />
+      ) : (
+        <KontenDashboard stats={stats} />
       )}
 
-      {/* Admin/Super: recent activity */}
-      {isAdminOrSuper && stats?.recentActivity?.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Clock className="h-4 w-4 text-primary" />
-              Aktivitas Terbaru
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {stats.recentActivity.map((log: { id: number; action: string; entityType: string; createdAt: string; user: { name: string } }) => (
-              <div key={log.id} className="flex items-center justify-between text-sm py-2 border-b last:border-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{log.user.name}</span>
-                  <span className="text-muted-foreground">{log.action}</span>
-                  <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{log.entityType}</span>
-                </div>
-                <span className="text-xs text-muted-foreground shrink-0">
-                  {formatDate(new Date(log.createdAt))}
-                </span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Info Akun untuk semua role */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Users className="h-4 w-4 text-primary" />
-            Informasi Akun
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <div className="flex justify-between py-2 border-b">
+      {/* Info akun untuk semua role */}
+      <Section title="Informasi Akun" icon={Users}>
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between gap-3 py-1.5 border-b">
             <span className="text-muted-foreground">Nama</span>
-            <span className="font-medium">{user?.name}</span>
+            <span className="font-medium truncate">{user?.name}</span>
           </div>
-          <div className="flex justify-between py-2 border-b">
+          <div className="flex justify-between gap-3 py-1.5 border-b">
             <span className="text-muted-foreground">Email</span>
-            <span className="font-medium">{user?.email}</span>
+            <span className="font-medium truncate">{user?.email}</span>
           </div>
-          <div className="flex justify-between py-2">
+          <div className="flex justify-between gap-3 py-1.5">
             <span className="text-muted-foreground">Role</span>
-            <span className="font-medium capitalize">{user?.role?.replace(/_/g, " ")}</span>
+            <span className="font-medium capitalize">{role?.replace(/_/g, " ")}</span>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </Section>
     </div>
   );
 }

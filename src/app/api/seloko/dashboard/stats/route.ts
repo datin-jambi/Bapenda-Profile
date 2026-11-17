@@ -10,11 +10,42 @@ export const GET = withErrorHandler(async (_request: NextRequest) => {
   const user = await getAuthUser();
   if (!user) throw new UnauthorizedError();
 
+  // Cakupan data per role (lihat docs/dashboard.md):
+  // - Super_Admin, Admin : seluruh sistem + moderasi
+  // - Editor, Ketua_Uptd, Admin_Uptd : konten milik sendiri saja
+  // - Petugas : hanya statistik pajak miliknya sendiri
   const isAdminOrSuper = user.role === "Super_Admin" || user.role === "Admin";
   const isEditor = user.role === "Editor" || user.role === "Admin_Uptd" || user.role === "Ketua_Uptd";
+  const isPetugas = user.role === "Petugas";
+  const showContent = isAdminOrSuper || isEditor;
 
   // Filter by authorId for non-admin roles
   const authorFilter = isEditor ? { authorId: user.id } : {};
+
+  // Petugas tidak punya akses konten: kembalikan statistik pajak saja.
+  if (isPetugas) {
+    const now = new Date();
+    const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const mine = { userId: user.id };
+    const [today, month, total, belumLunas, lunas, recentLogs] = await Promise.all([
+      prisma.vehicleTaxCheckLog.count({ where: { ...mine, createdAt: { gte: startToday } } }),
+      prisma.vehicleTaxCheckLog.count({ where: { ...mine, createdAt: { gte: startMonth } } }),
+      prisma.vehicleTaxCheckLog.count({ where: mine }),
+      prisma.vehicleTaxCheckLog.count({ where: { ...mine, status: "Belum Lunas" } }),
+      prisma.vehicleTaxCheckLog.count({ where: { ...mine, status: "Lunas" } }),
+      prisma.vehicleTaxCheckLog.findMany({
+        where: mine,
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        select: { id: true, licensePlate: true, status: true, condition: true, createdAt: true },
+      }),
+    ]);
+    return ApiResponse.success({
+      role: "Petugas",
+      tax: { today, month, total, belumLunas, lunas, recentLogs },
+    });
+  }
 
   // --- Stat counts ---
   const [newsTotal, galleryTotal, faqTotal] = await Promise.all([
@@ -112,18 +143,36 @@ export const GET = withErrorHandler(async (_request: NextRequest) => {
   }
 
   // --- FAQ top viewed ---
-  const topFaqs = await prisma.faq.findMany({
-    where: { deletedAt: null, isPublished: true },
-    orderBy: { viewCount: "desc" },
-    take: 5,
-    select: { id: true, question: true, viewCount: true },
-  });
+  const topFaqs = isAdminOrSuper
+    ? await prisma.faq.findMany({
+        where: { deletedAt: null, isPublished: true },
+        orderBy: { viewCount: "desc" },
+        take: 5,
+        select: { id: true, question: true, viewCount: true },
+      })
+    : [];
 
   // --- Published vs draft counts ---
   const publishedNews = newsByStatus.find((s) => s.status === ContentStatus.PUBLISHED)?._count._all ?? 0;
   const pendingNews = newsByStatus.find((s) => s.status === ContentStatus.PENDING_REVIEW)?._count._all ?? 0;
 
+  // --- Admin/Super only: ringkasan cek pajak seluruh petugas ---
+  let tax = null;
+  if (isAdminOrSuper) {
+    const startToday = new Date();
+    startToday.setHours(0, 0, 0, 0);
+    const [today, belumLunas, lunas] = await Promise.all([
+      prisma.vehicleTaxCheckLog.count({ where: { createdAt: { gte: startToday } } }),
+      prisma.vehicleTaxCheckLog.count({ where: { status: "Belum Lunas" } }),
+      prisma.vehicleTaxCheckLog.count({ where: { status: "Lunas" } }),
+    ]);
+    tax = { today, belumLunas, lunas, total: belumLunas + lunas };
+  }
+
   return ApiResponse.success({
+    role: user.role,
+    showContent,
+    tax,
     counts: { news: newsTotal, gallery: galleryTotal, faq: faqTotal },
     newsByStatus: newsByStatus.map((s) => ({ status: s.status, count: s._count._all })),
     galleryByStatus: galleryByStatus.map((s) => ({ status: s.status, count: s._count._all })),
