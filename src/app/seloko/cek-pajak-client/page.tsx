@@ -40,6 +40,7 @@ import { DataTable, ColumnDef } from "@/components/seloko/data-table";
 import { CameraScanner } from "@/components/seloko/camera-scanner";
 import { DataTablePagination } from "@/components/seloko/data-table-pagination";
 import { useDebounce } from "@/hooks/use-debounce";
+import { checkPajakClient, type CheckResult } from "@/lib/pkb-client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -66,35 +67,6 @@ type CheckLogResponse = {
   };
 };
 
-type KendaraanInfo = {
-  merek: string;
-  model: string;
-  jenis: string;
-  tahun: string;
-  warna: string;
-  cc: number;
-  bbm?: string;
-  njkb?: string;
-  tgAkhirPkb: string;
-  tgAkhirStnk: string;
-};
-
-type TagihanInfo = {
-  terakhirBayar?: string;
-  jatuhTempo?: string;
-  grandTotal?: string;
-  tahunTelat?: number;
-  bulanTelat?: number;
-} | null;
-
-type CheckResult = {
-  licensePlate: string;
-  status: "Lunas" | "Belum Lunas";
-  kendaraan: KendaraanInfo;
-  tagihan: TagihanInfo;
-  checkedAt: string;
-};
-
 /** Status pengiriman kondisi ke API Samsat (proses kedua setelah simpan log). */
 type ConditionSync = {
   skipped?: boolean;
@@ -113,151 +85,6 @@ const CONDITION_OPTIONS = [
   "Tidak sesuai kondisi",
   "Lainnya",
 ] as const;
-
-// ─── Client-side Samsat check ─────────────────────────────────────────────────
-// Duplikat dari /api/seloko/pajak-kendaraan (action "check"), tapi panggilan ke
-// /api/pkb/* dilakukan dari browser. Respons mentah tiap endpoint dicetak ke
-// console (DevTools) supaya log dari API bisa dilihat langsung.
-
-type KendaraanData = {
-  no_polisi: string;
-  merek?: { kode: number; nama: string };
-  nm_model_kb: string;
-  nm_jenis_kb: string;
-  th_rakitan: string;
-  warna_kb: string;
-  jumlah_cc: number;
-  tg_akhir_pkb: string;
-  tg_akhir_stnk: string;
-  bbm?: { nama: string };
-  njkb?: { nilai_jual: string };
-};
-
-type PajakData = {
-  terakhir_bayar: string;
-  jarak: { tahun: number; bulan: number };
-  tagihan: { total: { grand_total: string } };
-};
-
-type JRData = { total_tarif: { total: number } };
-type PNBPData = { pnbp: { total: string } };
-
-// Diagnosis only: token ikut ke bundle browser (NEXT_PUBLIC_*), siapa pun bisa melihatnya.
-const PKB_HOST = process.env.NEXT_PUBLIC_PKB_API_HOST;
-const PKB_TOKEN = process.env.NEXT_PUBLIC_PKB_API_TOKEN;
-const PKB_PATHS: Record<string, string> = {
-  "kendaraan-detail": "/kendaraan/detail",
-  "kendaraan-pnbp": "/kendaraan/pnbp",
-  "pajak-detail": "/pajak/detail",
-  "jr-detail": "/jr/detail",
-};
-
-async function pkbCall<T>(path: string, nopol: string): Promise<T | null> {
-  if (!PKB_HOST || !PKB_TOKEN) throw new Error("NEXT_PUBLIC_PKB_API_HOST / NEXT_PUBLIC_PKB_API_TOKEN belum di-set");
-  const url = `${PKB_HOST}${PKB_PATHS[path]}?nopol=${encodeURIComponent(nopol)}`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${PKB_TOKEN}` } });
-  const text = await res.text();
-  console.groupCollapsed(`[cek-pajak-client] ${path} ${nopol} -> HTTP ${res.status}`);
-  console.log("url:", url);
-  console.log("raw:", text);
-  console.groupEnd();
-
-  let json: { status?: boolean; message?: string; data?: T };
-  try {
-    json = JSON.parse(text);
-  } catch {
-    throw new Error(`Respons ${path} tidak valid (HTTP ${res.status})`);
-  }
-  if (json.status && json.data) return json.data;
-  // Sama dengan server: 400/404 = nopol tidak terdaftar, selain itu gangguan.
-  if (res.status === 400 || res.status === 404) return null;
-  throw new Error(`API Samsat (${path}) HTTP ${res.status}: ${json.message ?? "tanpa pesan"}`);
-}
-
-function normalizeNopol(raw: string): string {
-  const val = raw.trim().toUpperCase().replace(/\s+/g, " ");
-  if (/^[A-Z]{1,2}[\s\d]/.test(val)) return val;
-  return "BH " + val;
-}
-
-function parseRupiah(str?: string): number {
-  if (!str || str === "-") return 0;
-  const cleaned = str.replace(/[^0-9,.]/g, "").replace(/\./g, "").replace(",", ".");
-  return Math.round(parseFloat(cleaned) || 0);
-}
-
-function shouldShowTagihan(tgAkhirPkb: string): boolean {
-  const batas = new Date();
-  batas.setMonth(batas.getMonth() + 3);
-  return new Date(tgAkhirPkb) <= batas;
-}
-
-async function checkClient(licensePlate: string): Promise<CheckResult> {
-  const nopol = normalizeNopol(licensePlate);
-
-  const kendaraan = await pkbCall<KendaraanData>("kendaraan-detail", nopol);
-  if (!kendaraan) throw new Error("Data kendaraan tidak ditemukan");
-
-  let status: "Lunas" | "Belum Lunas";
-  let tagihan: TagihanInfo;
-
-  if (!shouldShowTagihan(kendaraan.tg_akhir_pkb)) {
-    status = "Lunas";
-    tagihan = { jatuhTempo: kendaraan.tg_akhir_pkb, grandTotal: "0" };
-  } else {
-    const [pajak, jr, pnbp] = await Promise.all([
-      pkbCall<PajakData>("pajak-detail", nopol),
-      pkbCall<JRData>("jr-detail", nopol),
-      pkbCall<PNBPData>("kendaraan-pnbp", nopol),
-    ]);
-
-    const sudahBayar =
-      !pajak ||
-      parseRupiah(pajak.tagihan.total.grand_total) === 0 ||
-      pajak.jarak.bulan === 0;
-
-    if (sudahBayar) {
-      status = "Lunas";
-      tagihan = {
-        terakhirBayar: pajak?.terakhir_bayar,
-        grandTotal: "0",
-        tahunTelat: pajak?.jarak.tahun,
-        bulanTelat: pajak?.jarak.bulan,
-      };
-    } else {
-      const totalPkb = parseRupiah(pajak.tagihan.total.grand_total);
-      const totalJr = jr?.total_tarif.total ?? 0;
-      const totalPnbp = parseRupiah(pnbp?.pnbp.total);
-      status = "Belum Lunas";
-      tagihan = {
-        terakhirBayar: pajak.terakhir_bayar,
-        jatuhTempo: kendaraan.tg_akhir_pkb,
-        grandTotal: String(totalPkb + totalJr + totalPnbp),
-        tahunTelat: pajak.jarak.tahun,
-        bulanTelat: pajak.jarak.bulan,
-      };
-    }
-  }
-
-  return {
-    licensePlate: kendaraan.no_polisi,
-    status,
-    kendaraan: {
-      merek: kendaraan.merek?.nama ?? "-",
-      model: kendaraan.nm_model_kb,
-      jenis: kendaraan.nm_jenis_kb,
-      tahun: kendaraan.th_rakitan,
-      warna: kendaraan.warna_kb,
-      cc: kendaraan.jumlah_cc,
-      bbm: kendaraan.bbm?.nama,
-      njkb: kendaraan.njkb?.nilai_jual,
-      tgAkhirPkb: kendaraan.tg_akhir_pkb,
-      tgAkhirStnk: kendaraan.tg_akhir_stnk,
-    },
-    tagihan,
-    checkedAt: new Date().toISOString(),
-  };
-}
 
 function formatDate(str?: string | null): string {
   if (!str) return "-";
@@ -373,7 +200,7 @@ function CekPajakPage() {
   // ── Check mutation ────────────────────────────────────────────────────────
 
   const checkMutation = useMutation({
-    mutationFn: checkClient,
+    mutationFn: checkPajakClient,
     // Lokasi & catatan sengaja tidak direset: petugas mengisinya sekali lalu
     // memakai nilai yang sama untuk beberapa kendaraan di lokasi tersebut.
     onSuccess: (result: CheckResult) => setCheckResult(result),

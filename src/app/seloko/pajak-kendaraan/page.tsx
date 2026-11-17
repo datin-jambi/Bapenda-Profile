@@ -19,6 +19,7 @@ import {
 import {
   VehicleTaxCheckInput,
 } from "@/lib/validations";
+import { checkPajakClient, type CheckResult } from "@/lib/pkb-client";
 import { toast } from "sonner";
 import {
   MapPin,
@@ -64,35 +65,6 @@ type CheckLogResponse = {
     totalItems: number;
     totalPages: number;
   };
-};
-
-type KendaraanInfo = {
-  merek: string;
-  model: string;
-  jenis: string;
-  tahun: string;
-  warna: string;
-  cc: number;
-  bbm?: string;
-  njkb?: string;
-  tgAkhirPkb: string;
-  tgAkhirStnk: string;
-};
-
-type TagihanInfo = {
-  terakhirBayar?: string;
-  jatuhTempo?: string;
-  grandTotal?: string;
-  tahunTelat?: number;
-  bulanTelat?: number;
-} | null;
-
-type CheckResult = {
-  licensePlate: string;
-  status: "Lunas" | "Belum Lunas";
-  kendaraan: KendaraanInfo;
-  tagihan: TagihanInfo;
-  checkedAt: string;
 };
 
 /** Status pengiriman kondisi ke API Samsat (proses kedua setelah simpan log). */
@@ -228,10 +200,8 @@ function CekPajakPage() {
   // ── Check mutation ────────────────────────────────────────────────────────
 
   const checkMutation = useMutation({
-    mutationFn: (licensePlate: string) =>
-      api
-        .post("/seloko/pajak-kendaraan", { action: "check", licensePlate })
-        .then((r) => r.data.data),
+    // Pengecekan dilakukan di browser (lib/pkb-client), sama seperti halaman lain.
+    mutationFn: (licensePlate: string) => checkPajakClient(licensePlate),
     // Lokasi & catatan sengaja tidak direset: petugas mengisinya sekali lalu
     // memakai nilai yang sama untuk beberapa kendaraan di lokasi tersebut.
     onSuccess: (result: CheckResult) => setCheckResult(result),

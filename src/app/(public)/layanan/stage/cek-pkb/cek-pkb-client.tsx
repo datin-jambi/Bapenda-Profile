@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { Search, AlertCircle, CheckCircle, Clock, Info, Download, Eye, FileText } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { fetchPkbBundle, normalizeNopol, parseRupiah, isSudahBayar, shouldShowTagihan, type PkbBundle } from "@/lib/pkb-client";
 
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -77,41 +78,6 @@ function formatDate(str?: string | null) {
 function formatRupiah(val: number | string) {
   const n = typeof val === "string" ? Number(String(val).replace(/[^0-9]/g, "")) : val;
   return "Rp " + Number(n).toLocaleString("id-ID");
-}
-
-function parseRupiah(str?: string) {
-  if (!str || str === "-") return 0;
-  const cleaned = str.replace(/[^0-9,.]/g, "").replace(/\./g, "").replace(",", ".");
-  return Math.round(parseFloat(cleaned) || 0);
-}
-
-function isSudahBayar(pajak: PajakData) {
-  return parseRupiah(pajak.tagihan.total.grand_total) === 0 || pajak.jarak.bulan === 0;
-}
-
-function shouldShowTagihan(tgAkhirPkb: string) {
-  const jatuhTempo = new Date(tgAkhirPkb);
-  const batas = new Date();
-  batas.setMonth(batas.getMonth() + 3);
-  return jatuhTempo <= batas;
-}
-
-async function apiFetch<T>(path: string, nopol: string): Promise<T | null> {
-  try {
-    const res = await fetch(`/api/pkb/${path}?nopol=${encodeURIComponent(nopol)}`);
-    const json = await res.json();
-    return json.status && json.data ? json.data : null;
-  } catch {
-    return null;
-  }
-}
-
-// Normalize nopol: tambah "BH " hanya jika tidak ada prefix huruf plat
-function normalizeNopol(raw: string): string {
-  const val = raw.trim().toUpperCase().replace(/\s+/g, " ");
-  // Sudah ada prefix plat (1-2 huruf diikuti spasi atau angka)
-  if (/^[A-Z]{1,2}[\s\d]/.test(val)) return val;
-  return "BH " + val;
 }
 
 // ─── Invoice Generator (client-side, returns HTML string) ────────────────────
@@ -348,24 +314,15 @@ export function CekPkbClient() {
     setError("");
     setData(null);
 
-    const kendaraan = await apiFetch<KendaraanData>("kendaraan-detail", normalized);
-    if (!kendaraan) {
-      setError("Data kendaraan tidak ditemukan");
+    let bundle: PkbBundle;
+    try {
+      bundle = await fetchPkbBundle(normalized);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal mengambil data");
       setLoading(false);
       return;
     }
-
-    let pajak: PajakData | null = null;
-    let jr: JRData | null = null;
-    let pnbp: PNBPData | null = null;
-
-    if (shouldShowTagihan(kendaraan.tg_akhir_pkb)) {
-      [pajak, jr, pnbp] = await Promise.all([
-        apiFetch<PajakData>("pajak-detail", normalized),
-        apiFetch<JRData>("jr-detail", normalized),
-        apiFetch<PNBPData>("kendaraan-pnbp", normalized),
-      ]);
-    }
+    const { kendaraan, pajak, jr, pnbp } = bundle;
 
     setData({ kendaraan, pajak, jr, pnbp });
     setLoading(false);
