@@ -17,7 +17,6 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { href: "/seloko/dashboard", label: "Dashboard", shortLabel: "Beranda", icon: LayoutDashboard },
   { href: "/seloko/pajak-kendaraan", label: "Cek Pajak", icon: Car, roles: ["Petugas"] },
-  { href: "/seloko/cek-pajak-client", label: "Cek Pajak (Client)", shortLabel: "Client", icon: Car, roles: ["Petugas"] },
   { href: "/seloko/log-pajak", label: "Log Cek Pajak", shortLabel: "Log Pajak", icon: ClipboardList, roles: ["Super_Admin", "Admin"] },
   { href: "/seloko/news", label: "Berita", icon: Newspaper, roles: ["Super_Admin", "Admin", "Editor", "Ketua_Uptd", "Admin_Uptd"] },
   { href: "/seloko/galleries", label: "Galeri", icon: Images, roles: ["Super_Admin", "Admin", "Editor", "Ketua_Uptd", "Admin_Uptd"] },
