@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Newspaper, Images, HelpCircle, FileText,
   Shield, Image, Settings, Users, Building2,
-  User, ScrollText, Tag, Car, ClipboardList,
+  User, ScrollText, Tag, Car, ClipboardList, History,
 } from "lucide-react";
 import { Role } from "@prisma/client";
 
@@ -17,6 +17,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { href: "/seloko/dashboard", label: "Dashboard", shortLabel: "Beranda", icon: LayoutDashboard },
   { href: "/seloko/pajak-kendaraan", label: "Cek Pajak", icon: Car, roles: ["Petugas"] },
+  { href: "/seloko/riwayat-pajak", label: "Riwayat Pengecekan", shortLabel: "Riwayat", icon: History, roles: ["Petugas"] },
   { href: "/seloko/log-pajak", label: "Log Cek Pajak", shortLabel: "Log Pajak", icon: ClipboardList, roles: ["Super_Admin", "Admin"] },
   { href: "/seloko/news", label: "Berita", icon: Newspaper, roles: ["Super_Admin", "Admin", "Editor", "Ketua_Uptd", "Admin_Uptd"] },
   { href: "/seloko/galleries", label: "Galeri", icon: Images, roles: ["Super_Admin", "Admin", "Editor", "Ketua_Uptd", "Admin_Uptd"] },

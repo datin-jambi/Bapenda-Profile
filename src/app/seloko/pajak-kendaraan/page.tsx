@@ -1,71 +1,21 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, Suspense } from "react";
 import api from "@/lib/axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  VehicleTaxCheckInput,
-} from "@/lib/validations";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { VehicleTaxCheckInput } from "@/lib/validations";
 import { checkPajakClient, type CheckResult } from "@/lib/pkb-client";
 import { toast } from "sonner";
-import {
-  MapPin,
-  Search,
-  Car,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  SearchCheck,
-  Save,
-  Calendar,
-  Fuel,
-  Gauge,
-  Palette,
-  CreditCard,
-  X,
-} from "lucide-react";
-import { DataTable, ColumnDef } from "@/components/seloko/data-table";
+import { MapPin, Car, CheckCircle2, XCircle, Loader2, SearchCheck, Save, Calendar, Fuel, Gauge, Palette, CreditCard } from "lucide-react";
 import { CameraScanner } from "@/components/seloko/camera-scanner";
-import { DataTablePagination } from "@/components/seloko/data-table-pagination";
-import { useDebounce } from "@/hooks/use-debounce";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-type CheckLog = {
-  id: number;
-  licensePlate: string;
-  status: string;
-  condition: string | null;
-  notes: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  lokasi: string | null;
-  createdAt: string;
-  user: { id: number; name: string };
-};
-
-type CheckLogResponse = {
-  data: CheckLog[];
-  meta: {
-    page: number;
-    limit: number;
-    totalItems: number;
-    totalPages: number;
-  };
-};
 
 /** Status pengiriman kondisi ke API Samsat (proses kedua setelah simpan log). */
 type ConditionSync = {
@@ -95,16 +45,6 @@ function formatDate(str?: string | null): string {
   });
 }
 
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleDateString("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function formatRupiah(val?: string): string {
   if (!val || val === "0" || val === "-") return "Rp 0";
   const num = Number(String(val).replace(/[^0-9]/g, ""));
@@ -113,36 +53,8 @@ function formatRupiah(val?: string): string {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-/** Warna badge per kondisi kendaraan — tiap kondisi punya warna berbeda. */
-const CONDITION_BADGE_VARIANT: Record<string, React.ComponentProps<typeof Badge>["variant"]> = {
-  Baik: "success",
-  Rusak: "warning",
-  "Rusak berat": "danger",
-  "Tidak sesuai kondisi": "info",
-  Lainnya: "default",
-};
-
-function ConditionBadge({ value }: { value: string | null }) {
-  if (!value) return <span className="text-muted-foreground">-</span>;
-  return (
-    <Badge variant={CONDITION_BADGE_VARIANT[value] ?? "outline"} size="sm">
-      {value}
-    </Badge>
-  );
-}
-
 function CekPajakPage() {
   const queryClient = useQueryClient();
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [searchInput, setSearchInput] = useState("");
-  const debouncedSearch = useDebounce(searchInput, 2000);
-  const isSearching = searchInput !== debouncedSearch;
-
-  // Filter riwayat — "all" berarti tanpa filter.
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [conditionFilter, setConditionFilter] = useState("all");
-  const hasFilter = statusFilter !== "all" || conditionFilter !== "all" || searchInput !== "";
 
   // Check flow state
   const [nopolInput, setNopolInput] = useState("");
@@ -179,24 +91,6 @@ function CekPajakPage() {
     );
   }, []);
 
-  // ── Data fetching (riwayat) ──────────────────────────────────────────────
-
-  const { data, isLoading } = useQuery<CheckLogResponse>({
-    queryKey: ["cek-pajak", page, pageSize, debouncedSearch, statusFilter, conditionFilter],
-    queryFn: () => {
-      const params = new URLSearchParams();
-      params.set("page", String(page));
-      params.set("limit", String(pageSize));
-      if (debouncedSearch) params.set("search", debouncedSearch);
-      if (statusFilter !== "all") params.set("status", statusFilter);
-      if (conditionFilter !== "all") params.set("condition", conditionFilter);
-      return api.get(`/seloko/pajak-kendaraan?${params.toString()}`).then((r) => r.data);
-    },
-  });
-
-  const logs = data?.data ?? [];
-  const meta = data?.meta;
-
   // ── Check mutation ────────────────────────────────────────────────────────
 
   const checkMutation = useMutation({
@@ -215,6 +109,7 @@ function CekPajakPage() {
     mutationFn: (payload: VehicleTaxCheckInput) =>
       api.post("/seloko/pajak-kendaraan", payload).then((r) => r.data as { data?: { conditionSync?: ConditionSync } }),
     onSuccess: (res) => {
+      // Riwayat ada di halaman lain; buang cache-nya supaya langsung terbaru.
       queryClient.invalidateQueries({ queryKey: ["cek-pajak"] });
       const sync = res?.data?.conditionSync;
       if (sync && !sync.success && !sync.skipped) {
@@ -276,56 +171,6 @@ function CekPajakPage() {
     setCondition("");
   }
 
-  // ── Columns ───────────────────────────────────────────────────────────────
-
-  const columns: ColumnDef<CheckLog>[] = [
-    {
-      key: "licensePlate",
-      header: "No. Polisi",
-      cellClassName: "font-mono font-bold",
-      render: (log) => log.licensePlate.toUpperCase(),
-    },
-    {
-      key: "status",
-      header: "Status",
-      render: (log) => (
-        <Badge variant={log.status === "Lunas" ? "success" : "destructive"}>
-          {log.status === "Lunas" ? (
-            <CheckCircle2 className="mr-1 h-3 w-3" />
-          ) : (
-            <XCircle className="mr-1 h-3 w-3" />
-          )}
-          {log.status}
-        </Badge>
-      ),
-    },
-    {
-      key: "condition",
-      header: "Kondisi",
-      render: (log) => <ConditionBadge value={log.condition} />,
-    },
-    {
-      key: "lokasi",
-      header: "Lokasi",
-      render: (log) => log.lokasi ?? "-",
-    },
-    {
-      key: "notes",
-      header: "Catatan",
-      render: (log) => (
-        <span className="text-sm text-muted-foreground line-clamp-1">
-          {log.notes ?? "-"}
-        </span>
-      ),
-    },
-    {
-      key: "createdAt",
-      header: "Waktu",
-      cellClassName: "text-sm text-muted-foreground whitespace-nowrap",
-      render: (log) => formatDateTime(log.createdAt),
-    },
-  ];
-
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -338,9 +183,8 @@ function CekPajakPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+      <div className="max-w-2xl space-y-4">
         {/* Form Card */}
-        <div className="lg:col-span-1 space-y-4">
           {/* Input Nopol */}
           <Card>
             <CardHeader>
@@ -633,139 +477,6 @@ function CekPajakPage() {
               </Card>
             </>
           )}
-        </div>
-
-        {/* History Table */}
-        <div className="lg:col-span-2 space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Riwayat Pengecekan</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Pencarian & filter — di HP: cari selebar kartu, dua filter berdampingan */}
-              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row">
-                <div className="relative col-span-2 sm:flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Cari nomor polisi..."
-                    value={searchInput}
-                    onChange={(e) => {
-                      setSearchInput(e.target.value);
-                      setPage(1);
-                    }}
-                    className="pl-9 h-11 md:h-10 text-base md:text-sm"
-                    inputMode="search"
-                    enterKeyHint="search"
-                  />
-                </div>
-
-                <Select
-                  value={statusFilter}
-                  onValueChange={(v) => {
-                    setStatusFilter(v);
-                    setPage(1);
-                  }}
-                >
-                  <SelectTrigger className="w-full h-11 md:h-9 sm:w-[150px]">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua status</SelectItem>
-                    <SelectItem value="Lunas">Lunas</SelectItem>
-                    <SelectItem value="Belum Lunas">Belum Lunas</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={conditionFilter}
-                  onValueChange={(v) => {
-                    setConditionFilter(v);
-                    setPage(1);
-                  }}
-                >
-                  <SelectTrigger className="w-full h-11 md:h-9 sm:w-[180px]">
-                    <SelectValue placeholder="Kondisi" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua kondisi</SelectItem>
-                    {CONDITION_OPTIONS.map((opt) => (
-                      <SelectItem key={opt} value={opt}>
-                        {opt}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                {hasFilter && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="col-span-2 h-11 sm:col-auto sm:h-9 text-muted-foreground"
-                    onClick={() => {
-                      setStatusFilter("all");
-                      setConditionFilter("all");
-                      setSearchInput("");
-                      setPage(1);
-                    }}
-                  >
-                    <X className="mr-1 h-4 w-4" />
-                    Reset filter
-                  </Button>
-                )}
-              </div>
-
-              {/* Table */}
-              <DataTable<CheckLog>
-                data={logs}
-                columns={columns}
-                isLoading={isLoading || isSearching}
-                emptyMessage="Belum ada data pengecekan"
-                skeletonRows={pageSize}
-                mobileCard={(log) => (
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono font-bold">{log.licensePlate.toUpperCase()}</span>
-                      <Badge variant={log.status === "Lunas" ? "success" : "destructive"}>
-                        {log.status === "Lunas" ? (
-                          <CheckCircle2 className="mr-1 h-3 w-3" />
-                        ) : (
-                          <XCircle className="mr-1 h-3 w-3" />
-                        )}
-                        {log.status}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <MapPin className="h-3 w-3 flex-shrink-0" />
-                      {log.lokasi ?? "-"}
-                    </p>
-                    {log.condition && (
-                      <div className="pt-0.5">
-                        <ConditionBadge value={log.condition} />
-                      </div>
-                    )}
-                    {log.notes && (
-                      <p className="text-xs text-muted-foreground line-clamp-2">{log.notes}</p>
-                    )}
-                    <p className="text-[11px] text-muted-foreground">{formatDateTime(log.createdAt)}</p>
-                  </div>
-                )}
-              />
-
-              {/* Pagination */}
-              <DataTablePagination
-                page={page}
-                totalPages={meta?.totalPages ?? 1}
-                totalItems={meta?.totalItems ?? 0}
-                pageSize={pageSize}
-                onPageChange={(p) => setPage(p)}
-                onPageSizeChange={(s) => {
-                  setPageSize(s);
-                  setPage(1);
-                }}
-              />
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </div>
   );
