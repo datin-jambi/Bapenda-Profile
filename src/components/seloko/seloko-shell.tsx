@@ -34,7 +34,7 @@ export function SelokoShell({ children }: { children: React.ReactNode }) {
       >
         <SelokoHeader />
         {/* pb menyisakan ruang untuk bottom tab bar di mobile. */}
-        <main className="seloko-main p-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:p-6 md:pb-6">
+        <main className="seloko-main p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-6 md:pb-6">
           {children}
         </main>
       </div>

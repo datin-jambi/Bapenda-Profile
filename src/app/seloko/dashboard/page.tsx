@@ -10,7 +10,7 @@ import { formatDate } from "@/lib/utils";
 import { useMounted } from "@/hooks/use-mounted";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, LineChart, Line, CartesianGrid,
+  PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area, CartesianGrid,
 } from "recharts";
 
 // Cakupan per role ada di docs/dashboard.md. Data di-filter di API
@@ -25,6 +25,8 @@ type TaxSummary = { today: number; belumLunas: number; lunas: number; total: num
 type PetugasTax = {
   today: number; month: number; total: number; belumLunas: number; lunas: number;
   recentLogs: { id: number; licensePlate: string; status: string; condition: string | null; createdAt: string }[];
+  trend?: { date: string; total: number; lunas: number; belumLunas: number }[];
+  byCondition?: { condition: string; count: number }[];
 };
 type Stats = {
   role: string;
@@ -149,42 +151,201 @@ function StatusPie({ rows }: { rows: NewsStatusRow[] }) {
 
 // ─── Petugas: hanya cek pajak miliknya ─────────────────────────────────────────
 
+const LUNAS_COLOR = "#10b981";
+const BELUM_COLOR = "#f43f5e";
+const CONDITION_COLORS = ["#6366f1", "#10b981", "#f59e0b", "#f43f5e", "#0ea5e9", "#a855f7"];
+
+function shortDay(key: string) {
+  const [, m, d] = key.split("-");
+  return `${parseInt(d, 10)}/${parseInt(m, 10)}`;
+}
+
+function HeroCard({ today, month }: { today: number; month: number }) {
+  return (
+    <Link
+      href="/seloko/pajak-kendaraan"
+      className="relative block overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 via-blue-500 to-cyan-400 p-5 text-white shadow-lg shadow-blue-500/25 active:scale-[0.99] transition-transform"
+    >
+      <div aria-hidden className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/15" />
+      <div aria-hidden className="absolute -right-2 bottom-2 h-14 w-14 rounded-full bg-white/10" />
+      <div className="relative flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium text-white/80">Cek hari ini</p>
+          <p className="text-4xl font-extrabold leading-none mt-1">{today}</p>
+          <p className="text-xs text-white/80 mt-2">{month} pengecekan bulan ini</p>
+        </div>
+        <span className="flex items-center gap-2 rounded-full bg-white text-blue-600 px-4 py-2.5 text-sm font-semibold shadow">
+          <Car className="h-4 w-4" />
+          Cek Baru
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+function MiniStat({ title, value, color, icon: Icon }: { title: string; value: number; color: string; icon: React.ElementType }) {
+  return (
+    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+      <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${color}`}>
+        <Icon className="h-5 w-5 text-white" />
+      </div>
+      <p className="text-2xl font-bold mt-3 leading-none">{value}</p>
+      <p className="text-xs text-muted-foreground mt-1">{title}</p>
+    </div>
+  );
+}
+
 function PetugasDashboard({ tax }: { tax: PetugasTax }) {
   // Lindungi terhadap respons yang belum lengkap (mis. API versi lama).
   const recentLogs = tax.recentLogs ?? [];
+  const trend = (tax.trend ?? []).map((t) => ({ ...t, label: shortDay(t.date) }));
+  const condition = tax.byCondition ?? [];
+  const donut = [
+    { name: "Lunas", value: tax.lunas, color: LUNAS_COLOR },
+    { name: "Belum lunas", value: tax.belumLunas, color: BELUM_COLOR },
+  ].filter((d) => d.value > 0);
+  const lunasPct = tax.total > 0 ? Math.round((tax.lunas / tax.total) * 100) : 0;
+
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard title="Cek hari ini" value={tax.today} icon={Car} color="bg-blue-500" sub="Pengecekan Anda" />
-        <StatCard title="Cek bulan ini" value={tax.month} icon={ClipboardList} color="bg-indigo-500" sub="Pengecekan Anda" />
-        <StatCard title="Belum lunas" value={tax.belumLunas} icon={XCircle} color="bg-red-500" sub="Dari total cek" />
-        <StatCard title="Lunas" value={tax.lunas} icon={CheckCircle2} color="bg-green-500" sub="Dari total cek" />
+      <HeroCard today={tax.today} month={tax.month} />
+
+      <div className="grid grid-cols-3 gap-2">
+        <MiniStat title="Total cek" value={tax.total} color="bg-indigo-500" icon={ClipboardList} />
+        <MiniStat title="Lunas" value={tax.lunas} color="bg-emerald-500" icon={CheckCircle2} />
+        <MiniStat title="Belum lunas" value={tax.belumLunas} color="bg-rose-500" icon={XCircle} />
       </div>
 
-      <Section title="Pengecekan Terakhir" icon={Clock}>
-        {recentLogs.length === 0 ? (
-          <Empty text="Belum ada pengecekan" />
-        ) : (
-          <div className="divide-y">
-            {recentLogs.map((log) => (
-              <div key={log.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-                <div className="min-w-0">
-                  <p className="font-semibold tracking-wide truncate">{log.licensePlate}</p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {log.condition ?? "Kondisi belum diisi"} · {formatDate(new Date(log.createdAt))}
-                  </p>
+      <Card className="rounded-2xl border-0 shadow-sm ring-1 ring-black/5">
+        <CardHeader className="p-4 pb-1">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-indigo-500" />
+            Tren 14 hari
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-2 pt-0">
+          <ResponsiveContainer width="100%" height={180}>
+            <AreaChart data={trend} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#6366f1" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted" />
+              <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" tickLine={false} axisLine={false} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 10 }} width={28} tickLine={false} axisLine={false} />
+              <Tooltip />
+              <Area type="monotone" dataKey="total" name="Cek" stroke="#6366f1" strokeWidth={2.5} fill="url(#trendFill)" dot={false} activeDot={{ r: 5 }} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Card className="rounded-2xl border-0 shadow-sm ring-1 ring-black/5">
+          <CardHeader className="p-4 pb-1">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+              Status pajak
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-2 pt-0">
+            {donut.length === 0 ? (
+              <Empty text="Belum ada data" />
+            ) : (
+              <div className="relative">
+                <ResponsiveContainer width="100%" height={170}>
+                  <PieChart>
+                    <Pie data={donut} dataKey="value" nameKey="name" innerRadius={48} outerRadius={70} paddingAngle={3} stroke="none">
+                      {donut.map((d) => <Cell key={d.name} fill={d.color} />)}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                  <p className="text-2xl font-extrabold text-emerald-600">{lunasPct}%</p>
+                  <p className="text-[10px] text-muted-foreground">lunas</p>
                 </div>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded shrink-0 ${log.status === "Lunas" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
-                  {log.status}
-                </span>
               </div>
-            ))}
-          </div>
-        )}
-        <Link href="/seloko/pajak-kendaraan" className="block mt-3 text-sm text-primary font-medium">
-          Buka Cek Pajak →
-        </Link>
-      </Section>
+            )}
+            <div className="flex justify-center gap-4 text-xs text-muted-foreground pb-2">
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />Lunas</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-500" />Belum lunas</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border-0 shadow-sm ring-1 ring-black/5">
+          <CardHeader className="p-4 pb-1">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Car className="h-4 w-4 text-sky-500" />
+              Kondisi kendaraan
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-2 pt-0">
+            {condition.length === 0 ? (
+              <Empty text="Belum ada data" />
+            ) : (
+              <ResponsiveContainer width="100%" height={Math.max(150, condition.length * 36 + 20)}>
+                <BarChart data={condition} layout="vertical" margin={{ top: 4, right: 12, left: 4, bottom: 0 }}>
+                  <XAxis type="number" allowDecimals={false} hide />
+                  <YAxis type="category" dataKey="condition" width={96} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <Tooltip />
+                  <Bar dataKey="count" name="Jumlah" radius={[0, 8, 8, 0]} barSize={16}>
+                    {condition.map((_, i) => <Cell key={i} fill={CONDITION_COLORS[i % CONDITION_COLORS.length]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="rounded-2xl border-0 shadow-sm ring-1 ring-black/5">
+        <CardHeader className="p-4 pb-2">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Clock className="h-4 w-4 text-primary" />
+            Pengecekan terakhir
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-2 pt-0">
+          {recentLogs.length === 0 ? (
+            <Empty text="Belum ada pengecekan" />
+          ) : (
+            <div className="divide-y">
+              {recentLogs.map((log) => (
+                <Link
+                  key={log.id}
+                  href="/seloko/riwayat-pajak"
+                  className="flex items-center gap-3 px-2 py-3 active:bg-muted/60 rounded-lg"
+                >
+                  <span className={`h-9 w-9 shrink-0 rounded-full flex items-center justify-center ${log.status === "Lunas" ? "bg-emerald-100" : "bg-rose-100"}`}>
+                    {log.status === "Lunas"
+                      ? <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                      : <XCircle className="h-5 w-5 text-rose-600" />}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold tracking-wide truncate">{log.licensePlate}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {log.condition ?? "Kondisi belum diisi"} · {formatDate(new Date(log.createdAt))}
+                    </p>
+                  </div>
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${log.status === "Lunas" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                    {log.status}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+          <Link
+            href="/seloko/riwayat-pajak"
+            className="flex items-center justify-center h-11 mt-2 rounded-xl bg-slate-100 text-sm font-semibold text-primary active:bg-slate-200"
+          >
+            Lihat semua riwayat
+          </Link>
+        </CardContent>
+      </Card>
     </>
   );
 }

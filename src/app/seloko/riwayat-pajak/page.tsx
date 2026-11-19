@@ -162,16 +162,17 @@ function RiwayatPajakPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="space-y-4 md:space-y-6">
+      {/* Judul di HP sudah ada di top bar. */}
+      <div className="hidden md:block">
         <h1 className="text-2xl font-bold text-primary">Riwayat Pengecekan</h1>
         <p className="text-sm text-muted-foreground">
           Daftar log pengecekan pajak kendaraan yang sudah kamu simpan
         </p>
       </div>
 
-      <Card>
-        <CardContent className="space-y-4 pt-6">
+      <Card className="rounded-2xl border-0 shadow-sm ring-1 ring-black/5">
+        <CardContent className="space-y-4 p-4 md:p-6">
           <DataTableFilter
             value={searchInput}
             onChange={(v) => {

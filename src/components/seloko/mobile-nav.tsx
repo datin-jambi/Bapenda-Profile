@@ -35,7 +35,7 @@ export function MobileTopBar() {
   const isRoot = items.some((i) => i.href === pathname);
 
   return (
-    <header className="md:hidden sticky top-0 z-30 bg-primary text-white pt-[env(safe-area-inset-top)]">
+    <header className="md:hidden sticky top-0 z-30 bg-gradient-to-r from-indigo-600 to-blue-500 text-white pt-[env(safe-area-inset-top)] shadow-md shadow-indigo-500/20">
       <div className="h-14 flex items-center gap-2 px-2">
         {isRoot ? (
           <div className="w-10 flex items-center justify-center">
@@ -179,8 +179,9 @@ export function MobileTabBar() {
         </div>
       )}
 
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 pb-[env(safe-area-inset-bottom)]">
-        <div className="flex">
+      {/* Bar melayang: pill putih, item aktif diberi kapsul berwarna. */}
+      <nav className="md:hidden fixed bottom-[max(0.5rem,env(safe-area-inset-bottom))] inset-x-3 z-40 rounded-3xl bg-white/95 backdrop-blur-md shadow-[0_8px_30px_rgba(15,23,42,0.12)] ring-1 ring-black/5">
+        <div className="flex items-center justify-around px-1.5 py-1.5">
           {tabs.map((item) => {
             const Icon = item.icon;
             const active = isNavActive(pathname, item.href);
@@ -189,10 +190,17 @@ export function MobileTabBar() {
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className="flex-1 flex flex-col items-center gap-0.5 py-2 active:bg-gray-50"
+                className="flex-1 flex flex-col items-center gap-1 py-1 min-w-0 active:scale-95 transition-transform"
               >
-                <Icon className={cn("h-5 w-5", active ? "text-primary" : "text-gray-400")} />
-                <span className={cn("text-[10px] leading-tight truncate max-w-full px-0.5", active ? "text-primary font-semibold" : "text-gray-500")}>
+                <span
+                  className={cn(
+                    "flex h-8 w-14 items-center justify-center rounded-full transition-colors",
+                    active ? "bg-gradient-to-br from-indigo-500 to-blue-500 text-white shadow-md shadow-indigo-500/30" : "text-slate-400"
+                  )}
+                >
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span className={cn("text-[10px] leading-tight truncate max-w-full px-0.5", active ? "text-indigo-600 font-semibold" : "text-slate-500")}>
                   {item.shortLabel ?? item.label}
                 </span>
               </Link>
@@ -203,10 +211,17 @@ export function MobileTabBar() {
           <button
             onClick={() => setSheetOpen(true)}
             aria-label="Menu lainnya"
-            className="flex-1 flex flex-col items-center gap-0.5 py-2 active:bg-gray-50"
+            className="flex-1 flex flex-col items-center gap-1 py-1 min-w-0 active:scale-95 transition-transform"
           >
-            <MoreHorizontal className={cn("h-5 w-5", restActive ? "text-primary" : "text-gray-400")} />
-            <span className={cn("text-[10px] leading-tight", restActive ? "text-primary font-semibold" : "text-gray-500")}>
+            <span
+              className={cn(
+                "flex h-8 w-14 items-center justify-center rounded-full transition-colors",
+                restActive ? "bg-gradient-to-br from-indigo-500 to-blue-500 text-white shadow-md shadow-indigo-500/30" : "text-slate-400"
+              )}
+            >
+              <MoreHorizontal className="h-5 w-5" />
+            </span>
+            <span className={cn("text-[10px] leading-tight", restActive ? "text-indigo-600 font-semibold" : "text-slate-500")}>
               Lainnya
             </span>
           </button>

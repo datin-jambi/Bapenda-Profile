@@ -5,7 +5,6 @@ import api from "@/lib/axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store";
@@ -79,168 +78,202 @@ export default function SelokoProfilePage() {
 
   if (isLoading) return (
     <div className="space-y-4 max-w-2xl">
-      {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+      <Skeleton className="h-40 w-full rounded-3xl" />
+      {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-2xl" />)}
     </div>
   );
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <div>
-        <h1 className="text-2xl font-bold text-primary">Profil Saya</h1>
-        <p className="text-sm text-muted-foreground">Kelola informasi profil Anda</p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
+    <div className="space-y-5 max-w-2xl">
+      {/* Kartu identitas: gradasi + avatar besar, judul halaman tidak perlu di HP. */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500 via-blue-500 to-cyan-400 p-5 text-white shadow-lg shadow-blue-500/25">
+        <div aria-hidden className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/15" />
+        <div aria-hidden className="absolute right-10 -bottom-10 h-24 w-24 rounded-full bg-white/10" />
+        <div className="relative flex items-center gap-4">
+          <div className="rounded-full bg-white/25 p-1">
+            <Avatar className="h-16 w-16 ring-2 ring-white/60">
               <AvatarImage src={me?.avatarUrl || ""} />
-              <AvatarFallback className="bg-primary text-white text-lg">
+              <AvatarFallback className="bg-white text-indigo-600 text-lg font-bold">
                 {me?.name ? getInitials(me.name) : "U"}
               </AvatarFallback>
             </Avatar>
-            <div>
-              <CardTitle>{me?.name}</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">{me?.role?.replace(/_/g, " ")}</p>
-              {me?.uptd && <p className="text-xs text-muted-foreground">{me.uptd.name}</p>}
+          </div>
+          <div className="min-w-0">
+            <p className="text-lg font-bold truncate">{me?.name}</p>
+            <p className="text-sm text-white/85 truncate">{me?.email}</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <span className="rounded-full bg-white/25 px-2.5 py-0.5 text-[11px] font-semibold capitalize">
+                {me?.role?.replace(/_/g, " ")}
+              </span>
+              {me?.uptd && (
+                <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] truncate max-w-full">{me.uptd.name}</span>
+              )}
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={profileForm.handleSubmit((d) => profileMutation.mutate(d))} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Nama Lengkap</Label>
-                <Input {...profileForm.register("name")} />
-                {profileForm.formState.errors.name && <p className="text-xs text-destructive">{profileForm.formState.errors.name.message}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input type="email" {...profileForm.register("email")} />
-              </div>
+        </div>
+      </div>
+
+      {/* Data pribadi */}
+      <section className="space-y-2">
+        <h2 className="px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Data pribadi</h2>
+        <form
+          onSubmit={profileForm.handleSubmit((d) => profileMutation.mutate(d))}
+          className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-black/5 space-y-4"
+        >
+          <div className="space-y-1.5">
+            <Label>Nama Lengkap</Label>
+            <Input className="h-12 rounded-xl text-base md:h-10 md:text-sm" {...profileForm.register("name")} />
+            {profileForm.formState.errors.name && (
+              <p className="text-xs text-destructive">{profileForm.formState.errors.name.message}</p>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Email</Label>
+            <Input type="email" className="h-12 rounded-xl text-base md:h-10 md:text-sm" {...profileForm.register("email")} />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>No. Telepon</Label>
+              <Input
+                className="h-12 rounded-xl text-base md:h-10 md:text-sm"
+                inputMode="tel"
+                {...profileForm.register("phone")}
+                placeholder="08xxxxxxxxxx"
+              />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>No. Telepon</Label>
-                <Input {...profileForm.register("phone")} placeholder="08xxxxxxxxxx" />
-              </div>
-              <div className="space-y-2">
-                <Label>Jenis Kelamin</Label>
-                <Controller
-                  control={profileForm.control}
-                  name="gender"
-                  render={({ field }) => (
-                    <Select value={field.value ?? ""} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Laki-laki">Laki-laki</SelectItem>
-                        <SelectItem value="Perempuan">Perempuan</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
+            <div className="space-y-1.5">
+              <Label>Jenis Kelamin</Label>
+              <Controller
+                control={profileForm.control}
+                name="gender"
+                render={({ field }) => (
+                  <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                    <SelectTrigger className="h-12 w-full rounded-xl text-base md:h-10 md:text-sm">
+                      <SelectValue placeholder="Pilih" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Laki-laki">Laki-laki</SelectItem>
+                      <SelectItem value="Perempuan">Perempuan</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+          </div>
+          <Button
+            type="submit"
+            loading={profileMutation.isPending}
+            className="h-12 w-full rounded-xl bg-gradient-to-r from-indigo-500 to-blue-500 border-0 text-white md:h-10 md:w-auto"
+          >
+            Simpan Perubahan
+          </Button>
+        </form>
+      </section>
+
+      {/* Ubah password */}
+      <section className="space-y-2">
+        <h2 className="px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Keamanan</h2>
+        <form
+          onSubmit={passwordForm.handleSubmit((d) => passwordMutation.mutate(d))}
+          className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-black/5 space-y-4"
+        >
+          {[
+            { label: "Password Saat Ini", field: "currentPassword" as const, show: showCurrent, toggle: () => setShowCurrent(!showCurrent) },
+            { label: "Password Baru", field: "newPassword" as const, show: showNew, toggle: () => setShowNew(!showNew) },
+            { label: "Konfirmasi Password Baru", field: "confirmPassword" as const, show: showConfirm, toggle: () => setShowConfirm(!showConfirm) },
+          ].map((f) => (
+            <div key={f.field} className="space-y-1.5">
+              <Label>{f.label}</Label>
+              <div className="relative">
+                <Input
+                  type={f.show ? "text" : "password"}
+                  autoComplete={f.field === "currentPassword" ? "current-password" : "new-password"}
+                  className="h-12 rounded-xl pr-12 text-base md:h-10 md:text-sm"
+                  {...passwordForm.register(f.field)}
                 />
+                <button
+                  type="button"
+                  onClick={f.toggle}
+                  aria-label={f.show ? "Sembunyikan password" : "Tampilkan password"}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-10 w-10 flex items-center justify-center rounded-full text-slate-500 active:bg-slate-100"
+                >
+                  {f.show ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
+              {f.field === "newPassword" && passwordForm.formState.errors.newPassword && (
+                <p className="text-xs text-destructive">{passwordForm.formState.errors.newPassword.message}</p>
+              )}
+              {f.field === "confirmPassword" && passwordForm.formState.errors.confirmPassword && (
+                <p className="text-xs text-destructive">{passwordForm.formState.errors.confirmPassword.message}</p>
+              )}
             </div>
-            <div className="flex justify-end">
-              <Button type="submit" loading={profileMutation.isPending}>Simpan Perubahan</Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          ))}
+          <Button
+            type="submit"
+            variant="outline"
+            disabled={passwordMutation.isPending}
+            className="h-12 w-full rounded-xl md:h-10 md:w-auto"
+          >
+            {passwordMutation.isPending ? "Mengubah..." : "Ubah Password"}
+          </Button>
+        </form>
+      </section>
 
-      <Card>
-        <CardHeader><CardTitle className="text-base">Ubah Password</CardTitle></CardHeader>
-        <CardContent>
-          <form onSubmit={passwordForm.handleSubmit((d) => passwordMutation.mutate(d))} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Password Saat Ini</Label>
-              <div className="relative">
-                <Input type={showCurrent ? "text" : "password"} {...passwordForm.register("currentPassword")} className="pr-10" />
-                <button type="button" onClick={() => setShowCurrent(!showCurrent)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
+      {/* Aplikasi: install & update PWA */}
+      <section className="space-y-2">
+        <h2 className="px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Aplikasi</h2>
+        <div className="rounded-3xl bg-white shadow-sm ring-1 ring-black/5 divide-y">
+          <div className="flex items-center gap-3 p-4">
+            <span className="h-10 w-10 shrink-0 rounded-2xl bg-indigo-50 flex items-center justify-center">
+              <Download className="h-5 w-5 text-indigo-600" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">SELOKO</p>
+              <p className="text-xs text-muted-foreground">
+                {installed
+                  ? "Sudah terpasang di perangkat ini"
+                  : canInstall
+                    ? "Pasang agar bisa dibuka dari layar utama"
+                    : "Menu browser → Tambahkan ke layar utama"}
+              </p>
             </div>
-            <div className="space-y-2">
-              <Label>Password Baru</Label>
-              <div className="relative">
-                <Input type={showNew ? "text" : "password"} {...passwordForm.register("newPassword")} className="pr-10" />
-                <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              {passwordForm.formState.errors.newPassword && <p className="text-xs text-destructive">{passwordForm.formState.errors.newPassword.message}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label>Konfirmasi Password Baru</Label>
-              <div className="relative">
-                <Input type={showConfirm ? "text" : "password"} {...passwordForm.register("confirmPassword")} className="pr-10" />
-                <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              {passwordForm.formState.errors.confirmPassword && <p className="text-xs text-destructive">{passwordForm.formState.errors.confirmPassword.message}</p>}
-            </div>
-            <div className="flex justify-end">
-              <Button type="submit" variant="outline" disabled={passwordMutation.isPending}>
-                {passwordMutation.isPending ? "Mengubah..." : "Ubah Password"}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Install & update PWA: cadangan bila banner install sudah ditutup. */}
-      <Card>
-        <CardHeader><CardTitle className="text-base">Aplikasi SELOKO</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">
-              {installed
-                ? "Aplikasi sudah terpasang di perangkat ini."
-                : canInstall
-                  ? "Pasang SELOKO agar bisa dibuka langsung dari layar utama."
-                  : "Buka menu browser lalu pilih \u201cTambahkan ke layar utama\u201d untuk memasang aplikasi."}
-            </p>
             {installed ? (
-              <span className="flex items-center gap-1.5 text-sm font-medium text-green-600">
+              <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600">
                 <CheckCircle2 className="h-4 w-4" />
                 Terpasang
               </span>
             ) : (
-              <Button type="button" onClick={install} disabled={!canInstall} className="sm:w-auto">
-                <Download className="mr-2 h-4 w-4" />
-                Pasang Aplikasi
+              <Button type="button" size="sm" onClick={install} disabled={!canInstall} className="rounded-xl">
+                Pasang
               </Button>
             )}
           </div>
-
-          {/* Tombol perbarui hanya muncul saat versi baru benar-benar siap. */}
           {updateReady && (
-            <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-muted-foreground">
-                Versi baru tersedia. Perbarui untuk memakai versi terkini.
-              </p>
-              <Button type="button" onClick={applyUpdate} loading={updating} className="sm:w-auto">
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Perbarui Aplikasi
+            <div className="flex items-center gap-3 p-4">
+              <span className="h-10 w-10 shrink-0 rounded-2xl bg-amber-50 flex items-center justify-center">
+                <RefreshCw className="h-5 w-5 text-amber-600" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">Versi baru tersedia</p>
+                <p className="text-xs text-muted-foreground">Perbarui untuk memakai versi terkini</p>
+              </div>
+              <Button type="button" size="sm" onClick={applyUpdate} loading={updating} className="rounded-xl">
+                Perbarui
               </Button>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      {/* Logout: satu-satunya jalan keluar untuk role tanpa menu lain (mis. Petugas). */}
+      {/* Logout: aksi terpisah di bawah, gaya tombol berbahaya. */}
       <Button
         type="button"
         variant="outline"
-        className="w-full text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 md:w-auto"
+        className="h-12 w-full rounded-2xl border-red-200 bg-white text-red-600 hover:bg-red-50 hover:text-red-700"
         onClick={handleLogout}
       >
         <LogOut className="mr-2 h-4 w-4" />
-        Logout
+        Keluar dari akun
       </Button>
     </div>
   );

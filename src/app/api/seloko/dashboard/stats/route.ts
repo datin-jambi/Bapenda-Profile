@@ -28,7 +28,9 @@ export const GET = withErrorHandler(async (_request: NextRequest) => {
     const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const mine = { userId: user.id };
-    const [today, month, total, belumLunas, lunas, recentLogs] = await Promise.all([
+    // 14 hari terakhir untuk grafik tren; dihitung per tanggal lokal server.
+    const startTrend = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 13);
+    const [today, month, total, belumLunas, lunas, recentLogs, trendRows, conditionRows] = await Promise.all([
       prisma.vehicleTaxCheckLog.count({ where: { ...mine, createdAt: { gte: startToday } } }),
       prisma.vehicleTaxCheckLog.count({ where: { ...mine, createdAt: { gte: startMonth } } }),
       prisma.vehicleTaxCheckLog.count({ where: mine }),
@@ -40,10 +42,45 @@ export const GET = withErrorHandler(async (_request: NextRequest) => {
         orderBy: { createdAt: "desc" },
         select: { id: true, licensePlate: true, status: true, condition: true, createdAt: true },
       }),
+      prisma.vehicleTaxCheckLog.findMany({
+        where: { ...mine, createdAt: { gte: startTrend } },
+        select: { createdAt: true, status: true },
+      }),
+      prisma.vehicleTaxCheckLog.groupBy({
+        by: ["condition"],
+        where: mine,
+        _count: { _all: true },
+      }),
     ]);
+
+    const trendMap = new Map<string, { date: string; total: number; lunas: number; belumLunas: number }>();
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(startTrend.getFullYear(), startTrend.getMonth(), startTrend.getDate() + i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      trendMap.set(key, { date: key, total: 0, lunas: 0, belumLunas: 0 });
+    }
+    for (const row of trendRows) {
+      const c = row.createdAt;
+      const key = `${c.getFullYear()}-${String(c.getMonth() + 1).padStart(2, "0")}-${String(c.getDate()).padStart(2, "0")}`;
+      const bucket = trendMap.get(key);
+      if (!bucket) continue;
+      bucket.total += 1;
+      if (row.status === "Lunas") bucket.lunas += 1;
+      else bucket.belumLunas += 1;
+    }
+
     return ApiResponse.success({
       role: "Petugas",
-      tax: { today, month, total, belumLunas, lunas, recentLogs },
+      tax: {
+        today,
+        month,
+        total,
+        belumLunas,
+        lunas,
+        recentLogs,
+        trend: Array.from(trendMap.values()),
+        byCondition: conditionRows.map((r) => ({ condition: r.condition ?? "Belum diisi", count: r._count._all })),
+      },
     });
   }
 
