@@ -25,39 +25,39 @@ export function SelokoSidebar() {
     <aside
       className={cn(
         // Desktop-only: di mobile navigasi ditangani bottom bar + drawer.
-        "hidden md:block fixed left-0 top-0 z-40 h-screen bg-primary text-white transition-all duration-300",
+        "hidden md:block fixed left-0 top-0 z-40 h-screen bg-gradient-to-b from-seloko-navy to-seloko-ink text-white shadow-xl transition-all duration-300",
         expanded ? "w-64" : "w-16"
       )}
     >
       {/* Logo */}
-      <div className="flex h-16 items-center justify-between px-4 border-b border-primary-600">
+      <div className="flex h-16 items-center justify-between px-4 border-b border-white/10">
         {expanded && (
-          <Link href="/seloko/dashboard" className="flex items-center gap-2 min-w-0">
+          <Link href="/seloko/dashboard" className="flex items-center min-w-0 rounded-xl bg-white px-2.5 py-1.5 shadow-sm">
             <NextImage
-              src="/icons/logo.png"
-              alt="Logo BAPENDA"
-              width={32}
-              height={32}
-              className="flex-shrink-0 rounded-md"
+              src="/images/seloko/seloko-full.png"
+              alt="SELOKO"
+              width={640}
+              height={217}
+              priority
+              className="h-8 w-auto max-w-[140px] object-contain"
             />
-            <span className="text-sm font-semibold leading-tight truncate">Seloko</span>
           </Link>
         )}
         {!expanded && (
-          <div className="mx-auto">
+          <Link href="/seloko/dashboard" className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm">
             <NextImage
-              src="/icons/logo.png"
-              alt="Logo BAPENDA"
-              width={32}
-              height={32}
-              className="rounded-md"
+              src="/images/seloko/seloko-mark.png"
+              alt="SELOKO"
+              width={234}
+              height={256}
+              className="h-7 w-auto object-contain"
             />
-          </div>
+          </Link>
         )}
         <button
           onClick={toggle}
           className={cn(
-            "p-1 rounded-md hover:bg-primary-600 transition-colors flex-shrink-0",
+            "p-1 rounded-md hover:bg-white/10 transition-colors flex-shrink-0",
             !expanded && "hidden"
           )}
           aria-label="Toggle sidebar"
@@ -87,9 +87,9 @@ export function SelokoSidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
                   isActive
-                    ? "bg-white/20 text-white"
+                    ? "bg-gradient-to-r from-seloko-blue to-seloko-cyan text-white shadow-md shadow-seloko-cyan/20"
                     : "text-white/70 hover:bg-white/10 hover:text-white",
                   !expanded && "justify-center px-2"
                 )}

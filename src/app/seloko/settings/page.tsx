@@ -206,7 +206,7 @@ export default function SelokoSettingsPage() {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div>
+      <div className="hidden md:block">
         <h1 className="text-2xl font-bold text-primary">Pengaturan Website</h1>
         <p className="text-sm text-muted-foreground">Kelola informasi umum, kontak, dan media sosial website</p>
       </div>

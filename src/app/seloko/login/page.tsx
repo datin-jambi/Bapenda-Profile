@@ -95,14 +95,14 @@ export default function LoginPage() {
       <Card className="shadow-2xl">
         <CardHeader className="space-y-2 text-center pb-4">
           <Image
-            src="/icons/logo.png"
-            alt="Logo Pemerintah Provinsi Jambi"
-            width={64}
-            height={64}
+            src="/images/seloko/seloko-full.png"
+            alt="SELOKO — Sistem Elektronik Penelusuran Informasi Kendaraan"
+            width={640}
+            height={217}
             priority
-            className="mx-auto mb-2 h-16 w-16 object-contain"
+            className="mx-auto mb-2 h-20 w-auto object-contain"
           />
-          <CardTitle className="text-2xl font-bold text-primary">Seloko</CardTitle>
+          <CardTitle className="text-2xl font-bold text-seloko-navy">Masuk</CardTitle>
           <CardDescription>Masuk ke Seloko BAPENDA Provinsi Jambi</CardDescription>
         </CardHeader>
         <CardContent>

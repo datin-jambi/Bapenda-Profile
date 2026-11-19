@@ -192,8 +192,8 @@ function CekPajakPage() {
       <Card className="rounded-2xl border-0 shadow-sm ring-1 ring-black/5">
         <CardHeader className="p-4 pb-2 md:p-6 md:pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <span className="h-7 w-7 rounded-lg bg-indigo-100 flex items-center justify-center">
-              <Car className="h-4 w-4 text-indigo-600" />
+            <span className="h-7 w-7 rounded-lg bg-seloko-mist flex items-center justify-center">
+              <Car className="h-4 w-4 text-seloko-blue" />
             </span>
             Form Pengecekan
           </CardTitle>
@@ -216,7 +216,7 @@ function CekPajakPage() {
                   }
                 }}
                 disabled={!!checkResult}
-                className="font-mono font-semibold tracking-wider h-12 text-lg rounded-xl bg-slate-50 md:h-9 md:text-sm"
+                className="font-mono font-semibold tracking-wider h-12 text-lg rounded-xl bg-seloko-mist md:h-9 md:text-sm"
                 inputMode="text"
                 autoCapitalize="characters"
                 autoComplete="off"
@@ -349,10 +349,10 @@ function CekPajakPage() {
       </Card>
 
       {/* Simpan — di HP menempel di atas bottom tab bar supaya selalu terjangkau. */}
-      <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-4 px-4 py-3 bg-slate-50/95 backdrop-blur border-t md:static md:mx-0 md:p-0 md:border-0 md:bg-transparent">
+      <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-4 px-4 py-3 bg-seloko-mist/95 backdrop-blur border-t md:static md:mx-0 md:p-0 md:border-0 md:bg-transparent">
         <Button
           type="button"
-          className="w-full h-12 text-base rounded-xl bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 border-0 text-white shadow-md shadow-indigo-500/25 md:h-10 md:text-sm"
+          className="w-full h-12 text-base rounded-xl bg-gradient-to-r from-seloko-blue to-seloko-cyan hover:from-indigo-600 hover:to-seloko-navy border-0 text-white shadow-md shadow-seloko-blue/25 md:h-10 md:text-sm"
           onClick={handleSave}
           disabled={!checkResult || !condition || saveMutation.isPending}
         >
@@ -374,7 +374,7 @@ function CekPajakPage() {
       {checkResult && (
         <>
           <div ref={resultRef} className="scroll-mt-20" />
-          <Card className={`rounded-2xl border-0 shadow-md ${checkResult.status === "Lunas" ? "bg-gradient-to-br from-emerald-500 to-teal-400 text-white shadow-emerald-500/25" : "bg-gradient-to-br from-rose-500 to-orange-400 text-white shadow-rose-500/25"}`}>
+          <Card className={`rounded-2xl border-0 shadow-md ${checkResult.status === "Lunas" ? "bg-gradient-to-br from-seloko-success to-seloko-cyan text-white shadow-seloko-success/25" : "bg-gradient-to-br from-seloko-danger to-seloko-warn text-white shadow-seloko-danger/25"}`}>
             <CardContent className="p-5 space-y-3">
               <div className="flex items-center gap-3">
                 <div className="h-12 w-12 shrink-0 rounded-full bg-white/25 flex items-center justify-center">
@@ -459,7 +459,7 @@ function InfoRow({
   bold?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-0.5 min-w-0 rounded-xl bg-slate-50 p-3 text-sm md:flex-row md:items-center md:justify-between md:gap-3 md:bg-transparent md:p-0">
+    <div className="flex flex-col gap-0.5 min-w-0 rounded-xl bg-seloko-mist p-3 text-sm md:flex-row md:items-center md:justify-between md:gap-3 md:bg-transparent md:p-0">
       <div className="flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground shrink-0">
         {icon}
         {label}

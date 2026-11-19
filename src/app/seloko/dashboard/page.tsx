@@ -164,7 +164,7 @@ function HeroCard({ today, month }: { today: number; month: number }) {
   return (
     <Link
       href="/seloko/pajak-kendaraan"
-      className="relative block overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 via-blue-500 to-cyan-400 p-5 text-white shadow-lg shadow-blue-500/25 active:scale-[0.99] transition-transform"
+      className="relative block overflow-hidden rounded-2xl bg-gradient-to-br from-seloko-navy via-seloko-blue to-seloko-cyan p-5 text-white shadow-lg shadow-seloko-blue/25 active:scale-[0.99] transition-transform"
     >
       <div aria-hidden className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/15" />
       <div aria-hidden className="absolute -right-2 bottom-2 h-14 w-14 rounded-full bg-white/10" />
@@ -174,7 +174,7 @@ function HeroCard({ today, month }: { today: number; month: number }) {
           <p className="text-4xl font-extrabold leading-none mt-1">{today}</p>
           <p className="text-xs text-white/80 mt-2">{month} pengecekan bulan ini</p>
         </div>
-        <span className="flex items-center gap-2 rounded-full bg-white text-blue-600 px-4 py-2.5 text-sm font-semibold shadow">
+        <span className="flex items-center gap-2 rounded-full bg-white text-seloko-blue px-4 py-2.5 text-sm font-semibold shadow">
           <Car className="h-4 w-4" />
           Cek Baru
         </span>
@@ -211,15 +211,15 @@ function PetugasDashboard({ tax }: { tax: PetugasTax }) {
       <HeroCard today={tax.today} month={tax.month} />
 
       <div className="grid grid-cols-3 gap-2">
-        <MiniStat title="Total cek" value={tax.total} color="bg-indigo-500" icon={ClipboardList} />
-        <MiniStat title="Lunas" value={tax.lunas} color="bg-emerald-500" icon={CheckCircle2} />
-        <MiniStat title="Belum lunas" value={tax.belumLunas} color="bg-rose-500" icon={XCircle} />
+        <MiniStat title="Total cek" value={tax.total} color="bg-seloko-mist0" icon={ClipboardList} />
+        <MiniStat title="Lunas" value={tax.lunas} color="bg-seloko-success" icon={CheckCircle2} />
+        <MiniStat title="Belum lunas" value={tax.belumLunas} color="bg-seloko-danger" icon={XCircle} />
       </div>
 
       <Card className="rounded-2xl border-0 shadow-sm ring-1 ring-black/5">
         <CardHeader className="p-4 pb-1">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-indigo-500" />
+            <TrendingUp className="h-4 w-4 text-seloko-blue" />
             Tren 14 hari
           </CardTitle>
         </CardHeader>
@@ -246,7 +246,7 @@ function PetugasDashboard({ tax }: { tax: PetugasTax }) {
         <Card className="rounded-2xl border-0 shadow-sm ring-1 ring-black/5">
           <CardHeader className="p-4 pb-1">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+              <CheckCircle2 className="h-4 w-4 text-seloko-success" />
               Status pajak
             </CardTitle>
           </CardHeader>
@@ -264,14 +264,14 @@ function PetugasDashboard({ tax }: { tax: PetugasTax }) {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                  <p className="text-2xl font-extrabold text-emerald-600">{lunasPct}%</p>
+                  <p className="text-2xl font-extrabold text-seloko-success">{lunasPct}%</p>
                   <p className="text-[10px] text-muted-foreground">lunas</p>
                 </div>
               </div>
             )}
             <div className="flex justify-center gap-4 text-xs text-muted-foreground pb-2">
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />Lunas</span>
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-500" />Belum lunas</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-seloko-success" />Lunas</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-seloko-danger" />Belum lunas</span>
             </div>
           </CardContent>
         </Card>
@@ -279,7 +279,7 @@ function PetugasDashboard({ tax }: { tax: PetugasTax }) {
         <Card className="rounded-2xl border-0 shadow-sm ring-1 ring-black/5">
           <CardHeader className="p-4 pb-1">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Car className="h-4 w-4 text-sky-500" />
+              <Car className="h-4 w-4 text-seloko-cyan" />
               Kondisi kendaraan
             </CardTitle>
           </CardHeader>
@@ -322,8 +322,8 @@ function PetugasDashboard({ tax }: { tax: PetugasTax }) {
                 >
                   <span className={`h-9 w-9 shrink-0 rounded-full flex items-center justify-center ${log.status === "Lunas" ? "bg-emerald-100" : "bg-rose-100"}`}>
                     {log.status === "Lunas"
-                      ? <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                      : <XCircle className="h-5 w-5 text-rose-600" />}
+                      ? <CheckCircle2 className="h-5 w-5 text-seloko-success" />
+                      : <XCircle className="h-5 w-5 text-seloko-danger" />}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold tracking-wide truncate">{log.licensePlate}</p>
@@ -331,7 +331,7 @@ function PetugasDashboard({ tax }: { tax: PetugasTax }) {
                       {log.condition ?? "Kondisi belum diisi"} · {formatDate(new Date(log.createdAt))}
                     </p>
                   </div>
-                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${log.status === "Lunas" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${log.status === "Lunas" ? "bg-emerald-50 text-seloko-success" : "bg-rose-50 text-seloko-danger"}`}>
                     {log.status}
                   </span>
                 </Link>
@@ -340,7 +340,7 @@ function PetugasDashboard({ tax }: { tax: PetugasTax }) {
           )}
           <Link
             href="/seloko/riwayat-pajak"
-            className="flex items-center justify-center h-11 mt-2 rounded-xl bg-slate-100 text-sm font-semibold text-primary active:bg-slate-200"
+            className="flex items-center justify-center h-11 mt-2 rounded-xl bg-seloko-mist text-sm font-semibold text-primary active:bg-seloko-mist"
           >
             Lihat semua riwayat
           </Link>
@@ -356,7 +356,7 @@ function KontenDashboard({ stats }: { stats: Stats }) {
   return (
     <>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <StatCard title="Berita saya" value={stats.counts?.news ?? 0} icon={Newspaper} color="bg-blue-500" sub="Semua status" />
+        <StatCard title="Berita saya" value={stats.counts?.news ?? 0} icon={Newspaper} color="bg-seloko-blue" sub="Semua status" />
         <StatCard title="Galeri saya" value={stats.counts?.gallery ?? 0} icon={Images} color="bg-purple-500" sub="Semua status" />
         <StatCard title="Dipublikasi" value={stats.publishedNews ?? 0} icon={TrendingUp} color="bg-green-500" sub="Berita live" />
       </div>
@@ -385,17 +385,17 @@ function AdminDashboard({ stats, isSuper }: { stats: Stats; isSuper: boolean }) 
       {/* Moderasi: yang perlu tindakan dulu */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard title="Menunggu review" value={stats.pendingNews ?? 0} icon={Clock} color="bg-amber-500" sub="Perlu persetujuan" />
-        <StatCard title="Total berita" value={stats.counts?.news ?? 0} icon={Newspaper} color="bg-blue-500" sub={`${stats.publishedNews ?? 0} dipublikasi`} />
+        <StatCard title="Total berita" value={stats.counts?.news ?? 0} icon={Newspaper} color="bg-seloko-blue" sub={`${stats.publishedNews ?? 0} dipublikasi`} />
         <StatCard title="Total galeri" value={stats.counts?.gallery ?? 0} icon={Images} color="bg-purple-500" sub="Semua status" />
         <StatCard title="Total FAQ" value={stats.counts?.faq ?? 0} icon={HelpCircle} color="bg-green-500" sub="Semua pertanyaan" />
       </div>
 
       {tax && (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard title="Cek pajak hari ini" value={tax.today} icon={Car} color="bg-blue-500" sub="Semua petugas" />
+          <StatCard title="Cek pajak hari ini" value={tax.today} icon={Car} color="bg-seloko-blue" sub="Semua petugas" />
           <StatCard title="Belum lunas" value={tax.belumLunas} icon={XCircle} color="bg-red-500" sub="Dari total cek" />
           <StatCard title="Lunas" value={tax.lunas} icon={CheckCircle2} color="bg-green-500" sub="Dari total cek" />
-          <StatCard title="Total cek pajak" value={tax.total} icon={ClipboardList} color="bg-indigo-500" sub="Semua waktu" />
+          <StatCard title="Total cek pajak" value={tax.total} icon={ClipboardList} color="bg-seloko-mist0" sub="Semua waktu" />
         </div>
       )}
 

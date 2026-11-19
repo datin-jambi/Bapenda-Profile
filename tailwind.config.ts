@@ -30,6 +30,17 @@ const config: Config = {
           800: "#162f5a",
           900: "#0e1e3b",
         },
+        // Palet logo SELOKO: navy wordmark, biru ribbon, cyan aksen.
+        seloko: {
+          navy: "#03317A",
+          blue: "#0A5FD0",
+          cyan: "#0EB4F5",
+          ink: "#0B1F4A",
+          mist: "#EEF6FD",
+          success: "#0F9F6E",
+          danger: "#E0456B",
+          warn: "#F59E0B",
+        },
         secondary: {
           DEFAULT: "#E8A020",
           foreground: "#ffffff",

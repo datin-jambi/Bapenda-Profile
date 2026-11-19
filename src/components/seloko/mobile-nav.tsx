@@ -35,12 +35,12 @@ export function MobileTopBar() {
   const isRoot = items.some((i) => i.href === pathname);
 
   return (
-    <header className="md:hidden sticky top-0 z-30 bg-gradient-to-r from-indigo-600 to-blue-500 text-white pt-[env(safe-area-inset-top)] shadow-md shadow-indigo-500/20">
+    <header className="md:hidden sticky top-0 z-30 bg-gradient-to-r from-seloko-navy to-seloko-blue text-white pt-[env(safe-area-inset-top)] shadow-md shadow-seloko-blue/20">
       <div className="h-14 flex items-center gap-2 px-2">
         {isRoot ? (
           <div className="w-10 flex items-center justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icons/logo.png" alt="" className="h-7 w-7 rounded-md" />
+            <img src="/images/seloko/seloko-mark.png" alt="SELOKO" className="h-8 w-auto object-contain" />
           </div>
         ) : (
           <button
@@ -195,12 +195,12 @@ export function MobileTabBar() {
                 <span
                   className={cn(
                     "flex h-8 w-14 items-center justify-center rounded-full transition-colors",
-                    active ? "bg-gradient-to-br from-indigo-500 to-blue-500 text-white shadow-md shadow-indigo-500/30" : "text-slate-400"
+                    active ? "bg-gradient-to-br from-seloko-blue to-seloko-cyan text-white shadow-md shadow-seloko-blue/30" : "text-slate-400"
                   )}
                 >
                   <Icon className="h-5 w-5" />
                 </span>
-                <span className={cn("text-[10px] leading-tight truncate max-w-full px-0.5", active ? "text-indigo-600 font-semibold" : "text-slate-500")}>
+                <span className={cn("text-[10px] leading-tight truncate max-w-full px-0.5", active ? "text-seloko-blue font-semibold" : "text-slate-500")}>
                   {item.shortLabel ?? item.label}
                 </span>
               </Link>
@@ -216,12 +216,12 @@ export function MobileTabBar() {
             <span
               className={cn(
                 "flex h-8 w-14 items-center justify-center rounded-full transition-colors",
-                restActive ? "bg-gradient-to-br from-indigo-500 to-blue-500 text-white shadow-md shadow-indigo-500/30" : "text-slate-400"
+                restActive ? "bg-gradient-to-br from-seloko-blue to-seloko-cyan text-white shadow-md shadow-seloko-blue/30" : "text-slate-400"
               )}
             >
               <MoreHorizontal className="h-5 w-5" />
             </span>
-            <span className={cn("text-[10px] leading-tight", restActive ? "text-indigo-600 font-semibold" : "text-slate-500")}>
+            <span className={cn("text-[10px] leading-tight", restActive ? "text-seloko-blue font-semibold" : "text-slate-500")}>
               Lainnya
             </span>
           </button>

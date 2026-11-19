@@ -86,14 +86,14 @@ export default function SelokoProfilePage() {
   return (
     <div className="space-y-5 max-w-2xl">
       {/* Kartu identitas: gradasi + avatar besar, judul halaman tidak perlu di HP. */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500 via-blue-500 to-cyan-400 p-5 text-white shadow-lg shadow-blue-500/25">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-seloko-navy via-seloko-blue to-seloko-cyan p-5 text-white shadow-lg shadow-seloko-blue/25">
         <div aria-hidden className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/15" />
         <div aria-hidden className="absolute right-10 -bottom-10 h-24 w-24 rounded-full bg-white/10" />
         <div className="relative flex items-center gap-4">
           <div className="rounded-full bg-white/25 p-1">
             <Avatar className="h-16 w-16 ring-2 ring-white/60">
               <AvatarImage src={me?.avatarUrl || ""} />
-              <AvatarFallback className="bg-white text-indigo-600 text-lg font-bold">
+              <AvatarFallback className="bg-white text-seloko-blue text-lg font-bold">
                 {me?.name ? getInitials(me.name) : "U"}
               </AvatarFallback>
             </Avatar>
@@ -163,7 +163,7 @@ export default function SelokoProfilePage() {
           <Button
             type="submit"
             loading={profileMutation.isPending}
-            className="h-12 w-full rounded-xl bg-gradient-to-r from-indigo-500 to-blue-500 border-0 text-white md:h-10 md:w-auto"
+            className="h-12 w-full rounded-xl bg-gradient-to-r from-seloko-blue to-seloko-cyan border-0 text-white md:h-10 md:w-auto"
           >
             Simpan Perubahan
           </Button>
@@ -195,7 +195,7 @@ export default function SelokoProfilePage() {
                   type="button"
                   onClick={f.toggle}
                   aria-label={f.show ? "Sembunyikan password" : "Tampilkan password"}
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-10 w-10 flex items-center justify-center rounded-full text-slate-500 active:bg-slate-100"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-10 w-10 flex items-center justify-center rounded-full text-slate-500 active:bg-seloko-mist"
                 >
                   {f.show ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -224,8 +224,8 @@ export default function SelokoProfilePage() {
         <h2 className="px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Aplikasi</h2>
         <div className="rounded-3xl bg-white shadow-sm ring-1 ring-black/5 divide-y">
           <div className="flex items-center gap-3 p-4">
-            <span className="h-10 w-10 shrink-0 rounded-2xl bg-indigo-50 flex items-center justify-center">
-              <Download className="h-5 w-5 text-indigo-600" />
+            <span className="h-10 w-10 shrink-0 rounded-2xl bg-seloko-mist flex items-center justify-center">
+              <Download className="h-5 w-5 text-seloko-blue" />
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold">SELOKO</p>
@@ -238,7 +238,7 @@ export default function SelokoProfilePage() {
               </p>
             </div>
             {installed ? (
-              <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600">
+              <span className="flex items-center gap-1 text-xs font-semibold text-seloko-success">
                 <CheckCircle2 className="h-4 w-4" />
                 Terpasang
               </span>
@@ -269,7 +269,7 @@ export default function SelokoProfilePage() {
       <Button
         type="button"
         variant="outline"
-        className="h-12 w-full rounded-2xl border-red-200 bg-white text-red-600 hover:bg-red-50 hover:text-red-700"
+        className="h-12 w-full rounded-2xl border-seloko-danger/30 bg-white text-red-600 hover:bg-red-50 hover:text-red-700"
         onClick={handleLogout}
       >
         <LogOut className="mr-2 h-4 w-4" />

@@ -182,7 +182,7 @@ function LogPajakPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="hidden md:block">
         <h1 className="text-2xl font-bold text-primary">Log Cek Pajak</h1>
         <p className="text-sm text-muted-foreground">
           Seluruh riwayat pengecekan pajak kendaraan yang dilakukan petugas

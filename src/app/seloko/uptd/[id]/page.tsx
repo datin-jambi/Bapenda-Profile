@@ -338,7 +338,7 @@ export default function UptdDetailPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <StatCard label="Total User" value={uptd.stats.totalUser} icon={Users} className="bg-blue-50 text-blue-600" />
+        <StatCard label="Total User" value={uptd.stats.totalUser} icon={Users} className="bg-blue-50 text-seloko-blue" />
         <StatCard label="Total Admin" value={uptd.stats.totalAdmin} icon={ShieldCheck} className="bg-purple-50 text-purple-600" />
         <StatCard label="Total Operator" value={uptd.stats.totalOperator} icon={Wrench} className="bg-orange-50 text-orange-600" />
         <StatCard label="User Aktif" value={uptd.stats.totalAktif} icon={UserCheck} className="bg-green-50 text-green-600" />

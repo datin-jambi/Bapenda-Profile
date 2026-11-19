@@ -673,7 +673,7 @@ export function CameraScanner({ onDetected }: CameraScannerProps) {
 
               {/* Detected */}
               {mode === "detected" && detectedPlate && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                <div className="bg-green-50 border border-seloko-success/30 rounded-lg p-4 text-center">
                   <p className="text-sm text-green-700 mb-1">Plat terdeteksi:</p>
                   <p className="text-2xl font-bold font-mono text-green-800">{detectedPlate}</p>
                 </div>

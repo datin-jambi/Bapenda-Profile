@@ -289,7 +289,7 @@ function SelokoRegulationsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+        <div className="hidden md:block">
           <h1 className="text-2xl font-bold text-primary">Manajemen Regulasi</h1>
           <p className="text-sm text-muted-foreground">Kelola peraturan dan dokumen regulasi</p>
         </div>
