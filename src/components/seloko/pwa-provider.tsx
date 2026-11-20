@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Download, X, WifiOff } from "lucide-react";
 import { useInstallStore, type InstallPromptEvent } from "@/store";
 
@@ -47,6 +47,9 @@ export function useInstallApp() {
 export function useAppUpdate() {
   const [waiting, setWaiting] = useState<ServiceWorker | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [upToDate, setUpToDate] = useState(false);
+  const regRef = useRef<ServiceWorkerRegistration | null>(null);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
@@ -63,6 +66,7 @@ export function useAppUpdate() {
     let reg: ServiceWorkerRegistration | undefined;
     function track(r: ServiceWorkerRegistration) {
       reg = r;
+      regRef.current = r;
       if (r.waiting) setWaiting(r.waiting);
       r.addEventListener("updatefound", () => {
         const sw = r.installing;
@@ -90,7 +94,24 @@ export function useAppUpdate() {
     waiting.postMessage({ type: "SKIP_WAITING" });
   }
 
-  return { updateReady: !!waiting, updating, applyUpdate };
+  /** Cek manual ke server. Hasilnya muncul sebagai tombol Perbarui atau status "terbaru". */
+  async function checkForUpdate() {
+    const r = regRef.current;
+    if (!r) return;
+    setChecking(true);
+    setUpToDate(false);
+    try {
+      await r.update();
+      if (r.waiting) setWaiting(r.waiting);
+      else setUpToDate(!r.installing);
+    } catch {
+      setUpToDate(false);
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  return { updateReady: !!waiting, updating, applyUpdate, checking, upToDate, checkForUpdate };
 }
 
 /**

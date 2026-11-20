@@ -15,7 +15,7 @@ import { updateUserSchema, changePasswordSchema, UpdateUserInput, ChangePassword
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils";
-import { Eye, EyeOff, LogOut, Download, CheckCircle2, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, LogOut, Download, RefreshCw, Info } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useInstallApp, useAppUpdate } from "@/components/seloko/pwa-provider";
 
@@ -26,8 +26,10 @@ export default function SelokoProfilePage() {
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showUninstallHelp, setShowUninstallHelp] = useState(false);
   const { canInstall, installed, install } = useInstallApp();
-  const { updateReady, updating, applyUpdate } = useAppUpdate();
+  const { updateReady, updating, applyUpdate, checking, upToDate, checkForUpdate } = useAppUpdate();
+  const canCheckUpdate = typeof navigator !== "undefined" && "serviceWorker" in navigator;
 
   const { data: me, isLoading } = useQuery({
     queryKey: ["me"],
@@ -219,7 +221,7 @@ export default function SelokoProfilePage() {
         </form>
       </section>
 
-      {/* Aplikasi: install & update PWA */}
+      {/* Aplikasi: install, update, dan panduan hapus PWA */}
       <section className="space-y-2">
         <h2 className="px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Aplikasi</h2>
         <div className="rounded-3xl bg-white shadow-sm ring-1 ring-black/5 divide-y">
@@ -234,34 +236,69 @@ export default function SelokoProfilePage() {
                   ? "Sudah terpasang di perangkat ini"
                   : canInstall
                     ? "Pasang agar bisa dibuka dari layar utama"
-                    : "Menu browser → Tambahkan ke layar utama"}
+                    : "Belum terpasang. Menu browser → Tambahkan ke layar utama"}
               </p>
             </div>
             {installed ? (
-              <span className="flex items-center gap-1 text-xs font-semibold text-seloko-success">
-                <CheckCircle2 className="h-4 w-4" />
-                Terpasang
-              </span>
+              <button
+                type="button"
+                onClick={() => setShowUninstallHelp((v) => !v)}
+                className="text-xs font-semibold text-slate-500 underline-offset-2 hover:underline"
+              >
+                {showUninstallHelp ? "Tutup" : "Hapus"}
+              </button>
             ) : (
               <Button type="button" size="sm" onClick={install} disabled={!canInstall} className="rounded-xl">
                 Pasang
               </Button>
             )}
           </div>
-          {updateReady && (
-            <div className="flex items-center gap-3 p-4">
-              <span className="h-10 w-10 shrink-0 rounded-2xl bg-amber-50 flex items-center justify-center">
-                <RefreshCw className="h-5 w-5 text-amber-600" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold">Versi baru tersedia</p>
-                <p className="text-xs text-muted-foreground">Perbarui untuk memakai versi terkini</p>
-              </div>
+
+          {installed && showUninstallHelp && (
+            <div className="p-4 text-xs text-muted-foreground space-y-1.5">
+              <p className="flex items-center gap-1 font-semibold text-slate-700">
+                <Info className="h-3.5 w-3.5" />
+                Cara menghapus aplikasi
+              </p>
+              <p>Browser tidak mengizinkan web menghapus dirinya sendiri. Hapus lewat pengaturan perangkat:</p>
+              <p>Android: tekan lama ikon SELOKO → Copot / Hapus instalasi.</p>
+              <p>Chrome/Edge di PC: menu ⋯ → Aplikasi → Kelola aplikasi → Hapus dari Chrome/Edge.</p>
+              <p>iPhone: tekan lama ikon → Hapus App → Hapus dari Layar Utama.</p>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 p-4">
+            <span className="h-10 w-10 shrink-0 rounded-2xl bg-slate-100 flex items-center justify-center">
+              <RefreshCw className="h-5 w-5 text-slate-600" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">Pembaruan</p>
+              <p className="text-xs text-muted-foreground">
+                {updateReady
+                  ? "Versi baru tersedia, perbarui untuk memakai versi terkini"
+                  : upToDate
+                    ? "Sudah memakai versi terbaru"
+                    : "Cek apakah ada versi baru"}
+              </p>
+            </div>
+            {updateReady ? (
               <Button type="button" size="sm" onClick={applyUpdate} loading={updating} className="rounded-xl">
                 Perbarui
               </Button>
-            </div>
-          )}
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={checkForUpdate}
+                loading={checking}
+                disabled={!canCheckUpdate}
+                className="rounded-xl"
+              >
+                Cek
+              </Button>
+            )}
+          </div>
         </div>
       </section>
 

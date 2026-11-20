@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [{ url: "/favicon.ico", type: "image/x-icon" }],
     shortcut: "/favicon.ico",
-    apple: "/icons/logo.png",
+    apple: "/icons/icon-192.png",
   },
   openGraph: {
     type: "website",
