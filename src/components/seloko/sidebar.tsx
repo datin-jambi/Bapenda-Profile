@@ -89,7 +89,7 @@ export function SelokoSidebar() {
                 className={cn(
                   "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
                   isActive
-                    ? "bg-gradient-to-r from-seloko-blue to-seloko-cyan text-white shadow-md shadow-seloko-cyan/20"
+                    ? "bg-gradient-to-r from-seloko-blue to-seloko-navy text-white shadow-md shadow-black/20 ring-1 ring-white/15"
                     : "text-white/70 hover:bg-white/10 hover:text-white",
                   !expanded && "justify-center px-2"
                 )}

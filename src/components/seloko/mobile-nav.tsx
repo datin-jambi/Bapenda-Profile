@@ -40,7 +40,7 @@ export function MobileTopBar() {
         {isRoot ? (
           <div className="w-10 flex items-center justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/seloko/seloko-mark.png" alt="SELOKO" className="h-8 w-auto object-contain" />
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white shadow-sm"><img src="/images/seloko/seloko-mark.png" alt="SELOKO" className="h-6 w-auto object-contain" /></span>
           </div>
         ) : (
           <button
