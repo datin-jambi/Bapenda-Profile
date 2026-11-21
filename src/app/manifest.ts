@@ -13,10 +13,10 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#03317A",
     lang: "id",
     icons: [
-      { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-      { src: "/icons/maskable-192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
-      { src: "/icons/maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      { src: "/icons/v3/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icons/v3/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icons/v3/maskable-192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
+      { src: "/icons/v3/maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
     shortcuts: [
       { name: "Cek Pajak Kendaraan", short_name: "Cek Pajak", url: "/seloko/pajak-kendaraan" },

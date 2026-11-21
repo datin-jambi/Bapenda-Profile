@@ -4,12 +4,12 @@
 //
 // PENTING: naikkan versi CACHE setiap rilis. Byte file ini harus berubah agar
 // browser mendeteksi service worker baru dan menawarkan tombol "Perbarui".
-const CACHE = "seloko-bapenda-v6";
+const CACHE = "seloko-bapenda-v8";
 const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll([OFFLINE_URL, "/icons/icon-192.png"]))
+    caches.open(CACHE).then((c) => c.addAll([OFFLINE_URL, "/icons/v3/icon-192.png"]))
   );
   // Sengaja TIDAK skipWaiting(): versi baru menunggu sampai pengguna menekan
   // "Perbarui" di halaman Profil, supaya halaman tidak berganti versi mendadak
