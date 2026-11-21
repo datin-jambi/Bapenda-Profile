@@ -112,7 +112,7 @@ export default function LoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@gmail.com"
+                placeholder="nama@contoh.com"
                 autoComplete="email"
                 disabled={isLocked}
                 {...register("email")}
