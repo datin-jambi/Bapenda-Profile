@@ -105,7 +105,7 @@ function CekPajakPage() {
   const saveMutation = useMutation({
     mutationFn: (payload: VehicleTaxCheckInput) =>
       api.post("/seloko/pajak-kendaraan", payload).then((r) => r.data),
-    onSuccess: async (_res, payload) => {
+    onSuccess: async () => {
       // Riwayat ada di halaman lain; buang cache-nya supaya langsung terbaru.
       queryClient.invalidateQueries({ queryKey: ["cek-pajak"] });
       toast.success("Log pengecekan berhasil disimpan");
