@@ -82,18 +82,23 @@ export async function syncVehicleCondition(params: {
   officerName: string;
 }): Promise<ConditionSyncResult> {
   const { url, apiKey } = readConfig();
+  const tag = `[vehicle-condition-sync] ${params.licensePlate}`;
 
   if (!url || !apiKey) {
+    console.warn(`${tag} SKIP: url/apiKey kosong (url=${url ? "ada" : "kosong"}, apiKey=${apiKey ? "ada" : "kosong"})`);
     return { skipped: true, success: false, message: "Integrasi kondisi belum dikonfigurasi" };
   }
 
   if (!params.condition || !CONDITION_STATUS_CODE[params.condition]) {
+    console.warn(`${tag} SKIP: kondisi "${params.condition ?? "-"}" tidak dipetakan`);
     return {
       skipped: true,
       success: false,
       message: `Kondisi "${params.condition ?? "-"}" tidak dikenal, tidak dikirim ke Samsat`,
     };
   }
+
+  console.info(`${tag} kirim ke ${url}`);
 
   const payload = buildConditionPayload({
     licensePlate: params.licensePlate,
@@ -136,6 +141,12 @@ export async function syncVehicleCondition(params: {
               : 500;
 
     const success = res.ok && Number(bodyStatus) < 400;
+    console.info(`${tag} balasan HTTP ${res.status}, body=${text.slice(0, 200)}`);
+    console.info(
+      success
+        ? `${tag} HASIL: BERHASIL terkirim ke Samsat`
+        : `${tag} HASIL: GAGAL (status Samsat ${bodyStatus}, pesan: ${json?.message ?? "-"})`
+    );
 
     return {
       success,

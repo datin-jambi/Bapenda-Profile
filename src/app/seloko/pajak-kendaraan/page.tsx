@@ -117,9 +117,10 @@ function CekPajakPage() {
       // Riwayat ada di halaman lain; buang cache-nya supaya langsung terbaru.
       queryClient.invalidateQueries({ queryKey: ["cek-pajak"] });
       const sync = res?.data?.conditionSync;
-      if (sync && !sync.success && !sync.skipped) {
-        // Log tetap tersimpan; yang gagal hanya pengiriman ke Samsat.
-        toast.warning(`Log tersimpan, namun gagal dikirim ke Samsat: ${sync.message}`, {
+      if (sync && !sync.success) {
+        // Log tetap tersimpan; yang gagal/di-skip hanya pengiriman ke Samsat.
+        const alasan = sync.skipped ? "dilewati" : "gagal dikirim";
+        toast.warning(`Log tersimpan, namun ${alasan} ke Samsat: ${sync.message}`, {
           duration: 8000,
         });
       } else {
