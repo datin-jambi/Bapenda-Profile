@@ -11,7 +11,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { VehicleTaxCheckInput } from "@/lib/validations";
 import { checkPajakClient, type CheckResult } from "@/lib/pkb-client";
-import { syncVehicleConditionClient } from "@/lib/vehicle-condition-client";
 import { toast } from "sonner";
 import { MapPin, Car, CheckCircle2, XCircle, Loader2, SearchCheck, Save, Calendar, Fuel, Gauge, Palette, CreditCard, X } from "lucide-react";
 import { CameraScanner } from "@/components/seloko/camera-scanner";
@@ -109,20 +108,7 @@ function CekPajakPage() {
     onSuccess: async (_res, payload) => {
       // Riwayat ada di halaman lain; buang cache-nya supaya langsung terbaru.
       queryClient.invalidateQueries({ queryKey: ["cek-pajak"] });
-      // Log sudah tersimpan. Kirim kondisi ke Samsat dari browser; gagal di sini
-      // hanya dilaporkan, tidak membatalkan log.
-      const sync = await syncVehicleConditionClient({
-        licensePlate: payload.licensePlate,
-        condition: payload.condition ?? null,
-      });
-      if (!sync.success) {
-        const alasan = sync.skipped ? "dilewati" : "gagal dikirim";
-        toast.warning(`Log tersimpan, namun ${alasan} ke Samsat: ${sync.message}`, {
-          duration: 8000,
-        });
-      } else {
-        toast.success("Log pengecekan berhasil disimpan dan kondisi terkirim ke Samsat");
-      }
+      toast.success("Log pengecekan berhasil disimpan");
       setCheckResult(null);
       setNopolInput("");
       // Kondisi melekat pada kendaraan yang baru dicek, jadi ikut direset —

@@ -224,7 +224,5 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     lokasi: parsed.data.lokasi,
   });
 
-  // Kirim kondisi ke Samsat dilakukan di client (lib/vehicle-condition-client)
-  // setelah log ini tersimpan.
   return ApiResponse.created(log, "Log pengecekan berhasil disimpan");
 });
