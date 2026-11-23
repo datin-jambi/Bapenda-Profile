@@ -146,12 +146,17 @@ export async function syncVehicleCondition(params: {
     };
   } catch (err) {
     const aborted = err instanceof Error && err.name === "AbortError";
+    // fetch() hanya melempar "fetch failed"; penyebab nyata (ENOTFOUND, ECONNRESET,
+    // cert error, dst.) ada di err.cause. Dicatat ke log server dan kodenya ikut ke klien.
+    const cause = err instanceof Error ? (err as Error & { cause?: { code?: string; message?: string } }).cause : undefined;
+    const code = cause?.code ?? (err as { code?: string } | null)?.code;
+    if (!aborted) console.error("[vehicle-condition-sync] fetch gagal", { url, code, cause: cause?.message ?? err });
     return {
       success: false,
       message: aborted
         ? `Timeout ${TIMEOUT_MS / 1000}s menghubungi API Samsat`
         : err instanceof Error
-          ? err.message
+          ? `${err.message}${code ? ` (${code})` : ""}`
           : "Gagal menghubungi API Samsat",
     };
   } finally {
