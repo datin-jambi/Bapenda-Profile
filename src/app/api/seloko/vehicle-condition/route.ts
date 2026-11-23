@@ -5,6 +5,9 @@ import { ApiResponse } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/with-error-handler";
 import { UnauthorizedError, ForbiddenError, ValidationError } from "@/lib/errors";
 import { hasPermission } from "@/types";
+import { request as httpsRequest } from "node:https";
+import { rootCertificates } from "node:tls";
+import { PKB_CA_PEM } from "@/lib/pkb-ca";
 
 /**
  * Proxy kirim kondisi kendaraan ke API Samsat (insert_kondisi.php).
@@ -23,6 +26,39 @@ const CONDITION_STATUS_CODE: Record<string, string> = {
 };
 
 const TIMEOUT_MS = Number(process.env.VEHICLE_CONDITION_TIMEOUT_MS) || 10_000;
+
+/**
+ * Node di image production lama tidak memuat GTS Root R4, padahal jambisamsat.net
+ * memakai chain WE1 <- GTS Root R4 ("unable to verify the first certificate").
+ * Sama seperti src/lib/pkb.ts, CA publik GTS ditambahkan eksplisit. Chain tetap
+ * diverifikasi penuh (bukan rejectUnauthorized: false).
+ * ponytail: hapus PKB_CA_PEM dari sini begitu image memakai Node yang memuat GTS Root R4.
+ */
+const CA_BUNDLE = [...rootCertificates, PKB_CA_PEM];
+
+function postJson(url: string, headers: Record<string, string>, body: string): Promise<{ status: number; text: string }> {
+  return new Promise((resolve, reject) => {
+    const req = httpsRequest(
+      url,
+      {
+        method: "POST",
+        headers: { ...headers, "Content-Length": Buffer.byteLength(body) },
+        ca: CA_BUNDLE,
+        timeout: TIMEOUT_MS,
+      },
+      (res) => {
+        let buf = "";
+        res.setEncoding("utf8");
+        res.on("data", (c) => (buf += c));
+        res.on("end", () => resolve({ status: res.statusCode ?? 0, text: buf }));
+        res.on("error", reject);
+      }
+    );
+    req.on("timeout", () => req.destroy(new Error("Timeout menghubungi Samsat")));
+    req.on("error", reject);
+    req.end(body);
+  });
+}
 
 const bodySchema = z.object({
   licensePlate: z.string().trim().min(1, "Nomor polisi wajib diisi").max(15),
@@ -69,15 +105,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     user_petugas: user.name ?? user.email,
   };
 
-  let res: Response;
+  let res: { status: number; text: string };
   try {
-    res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", APIKEY: apiKey },
-      body: JSON.stringify(payload),
-      cache: "no-store",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
+    res = await postJson(url, { "Content-Type": "application/json", APIKEY: apiKey }, JSON.stringify(payload));
   } catch (err) {
     const cause = (err as Error & { cause?: { code?: string; message?: string } }).cause;
     const code = cause?.code ?? (err as { code?: string }).code ?? (err as Error).name;
@@ -85,7 +115,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     return ApiResponse.error(`Gagal menghubungi Samsat (${code})`, 502);
   }
 
-  const text = await res.text();
+  const text = res.text;
   let json: { status?: number | string; message?: string } | null = null;
   try {
     json = JSON.parse(text);
@@ -93,7 +123,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     // balasan bukan JSON; nilai dari status HTTP
   }
   const bodyStatus = Number(json?.status ?? res.status);
-  const success = res.ok && bodyStatus < 400;
+  const success = res.status >= 200 && res.status < 300 && bodyStatus < 400;
   console.info(`${tag} balasan HTTP ${res.status}, body=${text.slice(0, 200)} => ${success ? "BERHASIL" : "GAGAL"}`);
 
   if (!success) {
