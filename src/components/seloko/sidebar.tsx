@@ -25,7 +25,7 @@ export function SelokoSidebar() {
     <aside
       className={cn(
         // Desktop-only: di mobile navigasi ditangani bottom bar + drawer.
-        "hidden md:block fixed left-0 top-0 z-40 h-screen bg-gradient-to-b from-seloko-navy to-seloko-ink text-white shadow-xl transition-all duration-300",
+        "hidden lg:block fixed left-0 top-0 z-40 h-screen bg-gradient-to-b from-seloko-navy to-seloko-ink text-white shadow-xl transition-all duration-300",
         expanded ? "w-64" : "w-16"
       )}
     >

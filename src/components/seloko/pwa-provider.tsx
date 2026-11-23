@@ -116,7 +116,8 @@ export function useAppUpdate() {
 
 /**
  * Daftarkan service worker + tawarkan install (Android/Chrome) dan
- * tampilkan banner saat offline. Hanya dipasang di area /seloko.
+ * tampilkan banner saat offline. Dipasang di root layout (semua route).
+ * Banner install hanya muncul di layar mobile/tablet (di bawah lg).
  */
 export function PwaProvider() {
   const setEvent = useInstallStore((s) => s.setEvent);
@@ -178,7 +179,7 @@ export function PwaProvider() {
       )}
 
       {canInstall && !dismissed && (
-        <div className="md:hidden fixed inset-x-3 z-50 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] bg-white border border-gray-200 rounded-2xl shadow-lg p-3 flex items-center gap-3">
+        <div className="lg:hidden fixed inset-x-3 z-50 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] bg-white border border-gray-200 rounded-2xl shadow-lg p-3 flex items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/icon-192.png" alt="" className="h-10 w-10 rounded-xl flex-shrink-0" />
           <div className="min-w-0 flex-1">

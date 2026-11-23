@@ -59,7 +59,7 @@ export function DataTable<T extends { id: string | number }>({
   return (
     <>
       {/* Mobile: daftar baris ala aplikasi, tidak ada scroll horizontal. */}
-      <div className="md:hidden rounded-xl border bg-card divide-y">
+      <div className="lg:hidden rounded-xl border bg-card divide-y">
         {data.map((row) => (
           <div key={row.id} className="p-4">
             {mobileCard ? (
@@ -79,7 +79,7 @@ export function DataTable<T extends { id: string | number }>({
       </div>
 
       {/* Desktop: tabel seperti semula. */}
-      <Card className="hidden md:block">
+      <Card className="hidden lg:block">
         <CardContent className="p-0">
           <Table>
             <TableHeader>

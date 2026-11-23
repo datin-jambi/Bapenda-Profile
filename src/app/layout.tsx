@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Poppins, Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import { PwaProvider } from "@/components/seloko/pwa-provider";
 import { Toaster } from "sonner";
 import NextTopLoader from "nextjs-toploader";
 
@@ -67,6 +68,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           shadow={false}
         />
         <Providers>
+          <PwaProvider />
           {children}
           <Toaster richColors position="top-right" />
         </Providers>

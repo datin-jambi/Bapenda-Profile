@@ -35,7 +35,7 @@ export function MobileTopBar() {
   const isRoot = items.some((i) => i.href === pathname);
 
   return (
-    <header className="md:hidden sticky top-0 z-30 bg-gradient-to-r from-seloko-navy to-seloko-blue text-white pt-[env(safe-area-inset-top)] shadow-md shadow-seloko-blue/20">
+    <header className="lg:hidden sticky top-0 z-30 bg-gradient-to-r from-seloko-navy to-seloko-blue text-white pt-[env(safe-area-inset-top)] shadow-md shadow-seloko-blue/20">
       <div className="h-14 flex items-center gap-2 px-2">
         {isRoot ? (
           <div className="w-10 flex items-center justify-center">
@@ -113,7 +113,7 @@ export function MobileTabBar() {
   return (
     <>
       {sheetOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end">
+        <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
           <button
             aria-label="Tutup menu"
             onClick={() => setSheetOpen(false)}
@@ -180,7 +180,7 @@ export function MobileTabBar() {
       )}
 
       {/* Bar melayang: pill putih, item aktif diberi kapsul berwarna. */}
-      <nav className="md:hidden fixed bottom-[max(0.5rem,env(safe-area-inset-bottom))] inset-x-3 z-40 rounded-3xl bg-white/95 backdrop-blur-md shadow-[0_8px_30px_rgba(15,23,42,0.12)] ring-1 ring-black/5">
+      <nav className="lg:hidden fixed bottom-[max(0.5rem,env(safe-area-inset-bottom))] inset-x-3 z-40 rounded-3xl bg-white/95 backdrop-blur-md shadow-[0_8px_30px_rgba(15,23,42,0.12)] ring-1 ring-black/5">
         <div className="flex items-center justify-around px-1.5 py-1.5">
           {tabs.map((item) => {
             const Icon = item.icon;
