@@ -21,7 +21,13 @@ type NewsStatusRow = { status: string; count: number };
 type MonthRow = { month: string; count: number };
 type RecentLog = { id: number; action: string; entityType: string; createdAt: string; user: { name: string } };
 type TopFaq = { id: number; question: string; viewCount: number };
-type TaxSummary = { today: number; belumLunas: number; lunas: number; total: number };
+type TaxSummary = {
+  today: number; month: number; belumLunas: number; lunas: number; total: number;
+  recentLogs?: { id: number; licensePlate: string; status: string; condition: string | null; createdAt: string; user?: { name: string } }[];
+  trend?: { date: string; total: number; lunas: number; belumLunas: number }[];
+  byCondition?: { condition: string; count: number }[];
+  byOfficer?: { name: string; count: number }[];
+};
 type PetugasTax = {
   today: number; month: number; total: number; belumLunas: number; lunas: number;
   recentLogs: { id: number; licensePlate: string; status: string; condition: string | null; createdAt: string }[];
@@ -393,10 +399,83 @@ function AdminDashboard({ stats, isSuper }: { stats: Stats; isSuper: boolean }) 
       {tax && (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard title="Cek pajak hari ini" value={tax.today} icon={Car} color="bg-seloko-blue" sub="Semua petugas" />
+          <StatCard title="Cek bulan ini" value={tax.month} icon={ClipboardList} color="bg-seloko-mist0" sub="Semua petugas" />
           <StatCard title="Belum lunas" value={tax.belumLunas} icon={XCircle} color="bg-red-500" sub="Dari total cek" />
           <StatCard title="Lunas" value={tax.lunas} icon={CheckCircle2} color="bg-green-500" sub="Dari total cek" />
-          <StatCard title="Total cek pajak" value={tax.total} icon={ClipboardList} color="bg-seloko-mist0" sub="Semua waktu" />
         </div>
+      )}
+
+      {tax && (
+        <>
+          <Section title="Tren Cek Pajak 14 Hari" icon={TrendingUp}>
+            {(tax.trend ?? []).length === 0 ? (
+              <Empty text="Belum ada data" />
+            ) : (
+              <ResponsiveContainer width="100%" height={CHART_H}>
+                <AreaChart data={(tax.trend ?? []).map((t) => ({ ...t, label: shortDay(t.date) }))} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" tickLine={false} axisLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 10 }} width={28} tickLine={false} axisLine={false} />
+                  <Tooltip />
+                  <Area type="monotone" dataKey="total" name="Cek" stroke="#6366f1" strokeWidth={2.5} fill="#6366f1" fillOpacity={0.2} dot={false} />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </Section>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <Section title="Cek per Petugas" icon={Users}>
+              {(tax.byOfficer ?? []).length === 0 ? (
+                <Empty text="Belum ada data" />
+              ) : (
+                <ResponsiveContainer width="100%" height={CHART_H}>
+                  <BarChart data={(tax.byOfficer ?? []).slice(0, 10)} layout="vertical" margin={{ left: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} className="stroke-muted" />
+                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                    <YAxis type="category" dataKey="name" width={96} tick={{ fontSize: 11 }} />
+                    <Tooltip />
+                    <Bar dataKey="count" name="Cek" fill="#6366f1" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </Section>
+
+            <Section title="Kondisi Kendaraan" icon={Car}>
+              {(tax.byCondition ?? []).length === 0 ? (
+                <Empty text="Belum ada data" />
+              ) : (
+                <ResponsiveContainer width="100%" height={CHART_H}>
+                  <PieChart>
+                    <Pie data={tax.byCondition ?? []} dataKey="count" nameKey="condition" innerRadius={48} outerRadius={75} paddingAngle={3} stroke="none">
+                      {(tax.byCondition ?? []).map((_, i) => <Cell key={i} fill={CONDITION_COLORS[i % CONDITION_COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip />
+                    <Legend verticalAlign="bottom" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </Section>
+          </div>
+
+          <Section title="Pengecekan Terakhir" icon={Clock}>
+            {(tax.recentLogs ?? []).length === 0 ? (
+              <Empty text="Belum ada pengecekan" />
+            ) : (
+              <ul className="divide-y">
+                {(tax.recentLogs ?? []).map((l) => (
+                  <li key={l.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                    <span className="min-w-0 truncate font-mono font-semibold">{l.licensePlate.toUpperCase()}</span>
+                    <span className="min-w-0 truncate text-muted-foreground">{l.user?.name ?? "-"}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{formatDate(l.createdAt)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Link href="/seloko/log-pajak" className="mt-2 inline-block text-sm text-primary hover:underline">
+              Lihat semua log
+            </Link>
+          </Section>
+        </>
       )}
 
       <Section title="Berita 6 Bulan Terakhir" icon={TrendingUp}>

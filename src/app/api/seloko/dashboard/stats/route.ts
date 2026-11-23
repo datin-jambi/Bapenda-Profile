@@ -196,14 +196,68 @@ export const GET = withErrorHandler(async (_request: NextRequest) => {
   // --- Admin/Super only: ringkasan cek pajak seluruh petugas ---
   let tax = null;
   if (isAdminOrSuper) {
-    const startToday = new Date();
-    startToday.setHours(0, 0, 0, 0);
-    const [today, belumLunas, lunas] = await Promise.all([
+    const now = new Date();
+    const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startTrend = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 13);
+    const [today, month, belumLunas, lunas, recentLogs, trendRows, conditionRows, officerRows] = await Promise.all([
       prisma.vehicleTaxCheckLog.count({ where: { createdAt: { gte: startToday } } }),
+      prisma.vehicleTaxCheckLog.count({ where: { createdAt: { gte: startMonth } } }),
       prisma.vehicleTaxCheckLog.count({ where: { status: "Belum Lunas" } }),
       prisma.vehicleTaxCheckLog.count({ where: { status: "Lunas" } }),
+      prisma.vehicleTaxCheckLog.findMany({
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        select: { id: true, licensePlate: true, status: true, condition: true, createdAt: true, user: { select: { name: true } } },
+      }),
+      prisma.vehicleTaxCheckLog.findMany({
+        where: { createdAt: { gte: startTrend } },
+        select: { createdAt: true, status: true },
+      }),
+      prisma.vehicleTaxCheckLog.groupBy({ by: ["condition"], _count: { _all: true } }),
+      prisma.vehicleTaxCheckLog.groupBy({
+        by: ["userId"],
+        _count: { _all: true },
+        orderBy: { _count: { userId: "desc" } },
+      }),
     ]);
-    tax = { today, belumLunas, lunas, total: belumLunas + lunas };
+
+    // Tren 14 hari per tanggal lokal, sama seperti cakupan petugas.
+    const trendMap = new Map<string, { date: string; total: number; lunas: number; belumLunas: number }>();
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(startTrend.getFullYear(), startTrend.getMonth(), startTrend.getDate() + i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      trendMap.set(key, { date: key, total: 0, lunas: 0, belumLunas: 0 });
+    }
+    for (const row of trendRows) {
+      const c = row.createdAt;
+      const key = `${c.getFullYear()}-${String(c.getMonth() + 1).padStart(2, "0")}-${String(c.getDate()).padStart(2, "0")}`;
+      const bucket = trendMap.get(key);
+      if (!bucket) continue;
+      bucket.total += 1;
+      if (row.status === "Lunas") bucket.lunas += 1;
+      else bucket.belumLunas += 1;
+    }
+
+    // Ringkasan per petugas: nama + jumlah cek (bukan detail log).
+    const officerIds = officerRows.map((r) => r.userId);
+    const officers = await prisma.user.findMany({
+      where: { id: { in: officerIds } },
+      select: { id: true, name: true },
+    });
+    const nameMap = new Map(officers.map((o) => [o.id, o.name]));
+
+    tax = {
+      today,
+      month,
+      belumLunas,
+      lunas,
+      total: belumLunas + lunas,
+      recentLogs,
+      trend: Array.from(trendMap.values()),
+      byCondition: conditionRows.map((r) => ({ condition: r.condition ?? "Belum diisi", count: r._count._all })),
+      byOfficer: officerRows.map((r) => ({ name: nameMap.get(r.userId) ?? "-", count: r._count._all })),
+    };
   }
 
   return ApiResponse.success({
