@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useState, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import api from "@/lib/axios";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { DataTable, ColumnDef } from "@/components/seloko/data-table";
 import { DataTableFilter } from "@/components/seloko/data-table-filter";
 import { DataTablePagination } from "@/components/seloko/data-table-pagination";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useAuthStore } from "@/store";
 import { Role } from "@prisma/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -75,6 +77,15 @@ function formatDateTime(iso: string): string {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 function LogPajakPage() {
+  const router = useRouter();
+  const { user } = useAuthStore();
+  // Petugas hanya boleh melihat log miliknya di /seloko/riwayat-pajak.
+  // Pembatasan data tetap di API; guard ini mencegah halaman admin terbuka lewat URL.
+  const isPetugas = user?.role === "Petugas";
+  useEffect(() => {
+    if (isPetugas) router.replace("/seloko/riwayat-pajak");
+  }, [isPetugas, router]);
+
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [searchInput, setSearchInput] = useState("");
@@ -86,6 +97,7 @@ function LogPajakPage() {
 
   const { data, isLoading } = useQuery<Paginated<CheckLog>>({
     queryKey: ["log-pajak", page, pageSize, debouncedSearch, statusFilter, conditionFilter, tanggal],
+    enabled: !isPetugas,
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page), limit: String(pageSize) });
       if (debouncedSearch) params.set("search", debouncedSearch);
