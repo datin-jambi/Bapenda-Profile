@@ -6,7 +6,57 @@ import { withErrorHandler } from "@/lib/with-error-handler";
 import { UnauthorizedError } from "@/lib/errors";
 import { ContentStatus } from "@prisma/client";
 
-export const GET = withErrorHandler(async (_request: NextRequest) => {
+type TrendRange = "day" | "week" | "month";
+
+function parseTrendRange(raw: string | null): TrendRange {
+  return raw === "week" || raw === "month" ? raw : "day";
+}
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const dayKey = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const dayLabel = (d: Date) => d.toLocaleDateString("id-ID", { day: "2-digit", month: "short" });
+
+/** Senin sebagai awal minggu. */
+function weekStart(d: Date): Date {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+  return x;
+}
+
+/**
+ * Rentang tren + bucket per granularitas (tanggal lokal server).
+ * day: 14 hari, week: 8 minggu (mulai Senin), month: 12 bulan.
+ */
+function trendWindow(range: TrendRange, now: Date) {
+  if (range === "month") {
+    const start = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+    return {
+      start,
+      buckets: Array.from({ length: 12 }, (_, i) => new Date(start.getFullYear(), start.getMonth() + i, 1)),
+      key: (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`,
+      label: (d: Date) => d.toLocaleDateString("id-ID", { month: "short", year: "numeric" }),
+    };
+  }
+  if (range === "week") {
+    const first = weekStart(now);
+    first.setDate(first.getDate() - 7 * 7);
+    return {
+      start: first,
+      buckets: Array.from({ length: 8 }, (_, i) => new Date(first.getFullYear(), first.getMonth(), first.getDate() + 7 * i)),
+      key: (d: Date) => dayKey(weekStart(d)),
+      label: dayLabel,
+    };
+  }
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 13);
+  return {
+    start,
+    buckets: Array.from({ length: 14 }, (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i)),
+    key: dayKey,
+    label: dayLabel,
+  };
+}
+
+export const GET = withErrorHandler(async (request: NextRequest) => {
   const user = await getAuthUser();
   if (!user) throw new UnauthorizedError();
 
@@ -196,10 +246,11 @@ export const GET = withErrorHandler(async (_request: NextRequest) => {
   // --- Admin/Super only: ringkasan cek pajak seluruh petugas ---
   let tax = null;
   if (isAdminOrSuper) {
+    const range = parseTrendRange(request.nextUrl.searchParams.get("range"));
     const now = new Date();
     const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startTrend = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 13);
+    const win = trendWindow(range, now);
     const [today, month, belumLunas, lunas, recentLogs, trendRows, conditionRows, officerRows] = await Promise.all([
       prisma.vehicleTaxCheckLog.count({ where: { createdAt: { gte: startToday } } }),
       prisma.vehicleTaxCheckLog.count({ where: { createdAt: { gte: startMonth } } }),
@@ -211,7 +262,7 @@ export const GET = withErrorHandler(async (_request: NextRequest) => {
         select: { id: true, licensePlate: true, status: true, condition: true, createdAt: true, user: { select: { name: true } } },
       }),
       prisma.vehicleTaxCheckLog.findMany({
-        where: { createdAt: { gte: startTrend } },
+        where: { createdAt: { gte: win.start } },
         select: { createdAt: true, status: true },
       }),
       prisma.vehicleTaxCheckLog.groupBy({ by: ["condition"], _count: { _all: true } }),
@@ -222,17 +273,14 @@ export const GET = withErrorHandler(async (_request: NextRequest) => {
       }),
     ]);
 
-    // Tren 14 hari per tanggal lokal, sama seperti cakupan petugas.
-    const trendMap = new Map<string, { date: string; total: number; lunas: number; belumLunas: number }>();
-    for (let i = 0; i < 14; i++) {
-      const d = new Date(startTrend.getFullYear(), startTrend.getMonth(), startTrend.getDate() + i);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      trendMap.set(key, { date: key, total: 0, lunas: 0, belumLunas: 0 });
+    // Tren per granularitas (harian / mingguan / bulanan).
+    const trendMap = new Map<string, { date: string; label: string; total: number; lunas: number; belumLunas: number }>();
+    for (const b of win.buckets) {
+      const key = win.key(b);
+      trendMap.set(key, { date: key, label: win.label(b), total: 0, lunas: 0, belumLunas: 0 });
     }
     for (const row of trendRows) {
-      const c = row.createdAt;
-      const key = `${c.getFullYear()}-${String(c.getMonth() + 1).padStart(2, "0")}-${String(c.getDate()).padStart(2, "0")}`;
-      const bucket = trendMap.get(key);
+      const bucket = trendMap.get(win.key(row.createdAt));
       if (!bucket) continue;
       bucket.total += 1;
       if (row.status === "Lunas") bucket.lunas += 1;

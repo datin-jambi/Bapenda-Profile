@@ -1,7 +1,9 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import api from "@/lib/axios";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Newspaper, Images, HelpCircle, Clock, Users, TrendingUp, Eye, Car, CheckCircle2, XCircle, ClipboardList } from "lucide-react";
 import Link from "next/link";
@@ -21,10 +23,18 @@ type NewsStatusRow = { status: string; count: number };
 type MonthRow = { month: string; count: number };
 type RecentLog = { id: number; action: string; entityType: string; createdAt: string; user: { name: string } };
 type TopFaq = { id: number; question: string; viewCount: number };
+type TrendRange = "day" | "week" | "month";
+
+const TREND_RANGE_LABEL: Record<TrendRange, string> = {
+  day: "Harian (14 hari)",
+  week: "Mingguan (8 minggu)",
+  month: "Bulanan (12 bulan)",
+};
+
 type TaxSummary = {
   today: number; month: number; belumLunas: number; lunas: number; total: number;
   recentLogs?: { id: number; licensePlate: string; status: string; condition: string | null; createdAt: string; user?: { name: string } }[];
-  trend?: { date: string; total: number; lunas: number; belumLunas: number }[];
+  trend?: { date: string; label: string; total: number; lunas: number; belumLunas: number }[];
   byCondition?: { condition: string; count: number }[];
   byOfficer?: { name: string; count: number }[];
 };
@@ -380,7 +390,17 @@ function KontenDashboard({ stats }: { stats: Stats }) {
 
 // ─── Super_Admin / Admin: sistem + moderasi ────────────────────────────────────
 
-function AdminDashboard({ stats, isSuper }: { stats: Stats; isSuper: boolean }) {
+function AdminDashboard({
+  stats,
+  isSuper,
+  trendRange,
+  onTrendRangeChange,
+}: {
+  stats: Stats;
+  isSuper: boolean;
+  trendRange: TrendRange;
+  onTrendRangeChange: (r: TrendRange) => void;
+}) {
   const tax = stats.tax as TaxSummary | null | undefined;
   const usersByRole = (stats.usersByRole ?? []).map((r) => ({ name: r.role.replace(/_/g, " "), value: r.count }));
   const byCategory = (stats.newsByCategory ?? []).map((c) => ({ name: c.category, Berita: c.count }));
@@ -407,12 +427,24 @@ function AdminDashboard({ stats, isSuper }: { stats: Stats; isSuper: boolean }) 
 
       {tax && (
         <>
-          <Section title="Tren Cek Pajak 14 Hari" icon={TrendingUp}>
+          <Section title="Tren Cek Pajak" icon={TrendingUp}>
+            <div className="mb-2 flex justify-end">
+              <Select value={trendRange} onValueChange={(v) => onTrendRangeChange(v as TrendRange)}>
+                <SelectTrigger className="h-8 w-[180px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(TREND_RANGE_LABEL) as TrendRange[]).map((r) => (
+                    <SelectItem key={r} value={r}>{TREND_RANGE_LABEL[r]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {(tax.trend ?? []).length === 0 ? (
               <Empty text="Belum ada data" />
             ) : (
               <ResponsiveContainer width="100%" height={CHART_H}>
-                <AreaChart data={(tax.trend ?? []).map((t) => ({ ...t, label: shortDay(t.date) }))} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                <AreaChart data={tax.trend ?? []} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted" />
                   <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" tickLine={false} axisLine={false} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 10 }} width={28} tickLine={false} axisLine={false} />
@@ -573,10 +605,13 @@ function AdminDashboard({ stats, isSuper }: { stats: Stats; isSuper: boolean }) 
 export default function DashboardPage() {
   const { user } = useAuthStore();
   const role = user?.role;
+  const [trendRange, setTrendRange] = useState<TrendRange>("day");
 
+  // keepPreviousData: ganti range hanya memuat ulang chart tren, halaman tetap tampil.
   const { data: stats, isLoading } = useQuery<Stats>({
-    queryKey: ["dashboard-stats"],
-    queryFn: () => api.get("/seloko/dashboard/stats").then((r) => r.data.data),
+    queryKey: ["dashboard-stats", trendRange],
+    queryFn: () => api.get(`/seloko/dashboard/stats?range=${trendRange}`).then((r) => r.data.data),
+    placeholderData: keepPreviousData,
   });
 
   // Sapaan, tanggal, dan nama user bergantung jam/locale/localStorage klien —
@@ -610,7 +645,12 @@ export default function DashboardPage() {
       ) : role === "Petugas" && stats.tax ? (
         <PetugasDashboard tax={stats.tax as PetugasTax} />
       ) : role === "Super_Admin" || role === "Admin" ? (
-        <AdminDashboard stats={stats} isSuper={role === "Super_Admin"} />
+        <AdminDashboard
+          stats={stats}
+          isSuper={role === "Super_Admin"}
+          trendRange={trendRange}
+          onTrendRangeChange={setTrendRange}
+        />
       ) : (
         <KontenDashboard stats={stats} />
       )}
